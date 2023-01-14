@@ -37,10 +37,6 @@ fn main() -> anyhow::Result<()> {
         // // mustn't forget to feed the doggy!
         // doggy0.feed();
 
-        // // if we've read data from the sensor, wait for 2 seconds before reading
-        // // again
-        // nb::block!(timer0.wait()).expect("timer0 is infallible");
-
         // Keep looping until ready
         match scd30.data_ready() {
             Ok(true) => {}
@@ -58,7 +54,9 @@ fn main() -> anyhow::Result<()> {
                 log::info!("CO2: {co2:>8.3} ppm, Temp: {temp:>3.3} \u{00B0}C, Humidity: {rh:>3.3}%")
             }
         }
-    }
 
-    Ok(())
+        // if we've read data from the sensor, wait for 2 seconds before reading
+        // again
+        std::thread::sleep(std::time::Duration::from_secs(2));
+    }
 }
