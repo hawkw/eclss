@@ -19,6 +19,9 @@ pio = ["esp-idf-sys/pio"]
 anyhow = "1"
 esp-idf-sys = { version = "0.32.1", features = ["binstart"] }
 esp-idf-hal = "0.40.1"
+log = { version = "0.4" }
+sensor-scd30 = { version = "0.4.0", default-features = false }
+shared-bus = { version = "0.2.0", features = ["std"] }
 
 [build-dependencies]
 embuild = "0.31.0"
