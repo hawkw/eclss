@@ -1,7 +1,8 @@
 # /!\ EXTREMELY SERIOUS WARNING /!\
 #
 # For some absurd reason, this will fail if a system-wide `clang` installation
-# exists. I don't know why this is.
+# exists. See here for details:
+# https://github.com/esp-rs/esp-idf-template/issues/64#issuecomment-1303669233
 {
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs";
