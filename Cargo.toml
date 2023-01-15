@@ -19,10 +19,14 @@ pio = ["esp-idf-sys/pio"]
 anyhow = "1"
 esp-idf-sys = { version = "0.32.1", features = ["binstart"] }
 esp-idf-hal = "0.40.1"
-esp-idf-svc = { version = "0.45" }
+esp-idf-svc = { version = "0.45", features = ["alloc"] }
+embedded-svc = { version = "0.24", features = ["alloc"] }
 log = { version = "0.4" }
 sensor-scd30 = { version = "0.4.0", default-features = false }
 shared-bus = { version = "0.2.0", features = ["std"] }
 
 [build-dependencies]
 embuild = "0.31.0"
+
+[patch.crates-io]
+esp-idf-svc = { git = "https://github.com/esp-rs/esp-idf-svc" }

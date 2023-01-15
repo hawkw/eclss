@@ -1,16 +1,19 @@
 // If using the `binstart` feature of `esp-idf-sys`, always keep this module
 // imported
 use anyhow::Context;
-use eclss::scd30;
+use eclss::{scd30, wifi};
 use esp_idf_hal::{
     i2c::{I2cConfig, I2cDriver},
     peripherals::Peripherals,
     prelude::*,
 };
-use esp_idf_svc::log::EspLogger;
+use esp_idf_svc::{eventloop::EspSystemEventLoop, log::EspLogger};
 use esp_idf_sys as _;
 
 static METRICS: eclss::SensorMetrics = eclss::SensorMetrics::new();
+// XXX(eliza): disable wifi config for now since it breaks everything.
+// const SSID: &str = env!("WIFI_SSID");
+// const PASS: &str = env!("WIFI_PASS");
 
 fn main() -> anyhow::Result<()> {
     // It is necessary to call this function once. Otherwise, some patches to the
@@ -30,6 +33,12 @@ fn main() -> anyhow::Result<()> {
     let i2c = peripherals.i2c0;
     let sda = peripherals.pins.gpio5;
     let scl = peripherals.pins.gpio6;
+
+    let sysloop = EspSystemEventLoop::take()?;
+
+    // XXX(eliza): uncommenting this line makes the board boot loop...
+    // let wifi = wifi::bringup(peripherals.modem, &sysloop, SSID, PASS)
+    //     .context("failed to bring up WiFi")?;
 
     // Maximal I2C speed is 100 kHz and the master has to support clock
     // stretching. Sensirion recommends to operate the SCD30
