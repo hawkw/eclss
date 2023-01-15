@@ -25,7 +25,7 @@ linker = "ldproxy"
 runner = "espflash --monitor"
 # Future - necessary for the experimental "native build" of esp-idf-sys with ESP32C3. See also https://github.com/ivmarkov/embuild/issues/16
 # For ESP-IDF 5 add `espidf_time64` and for earlier versions - remove this flag: https://github.com/esp-rs/rust/issues/110
-rustflags = ["-C", "default-linker-libraries"]
+rustflags = ["-C", "default-linker-libraries", "--cfg", "esp_idf_log_colors"]
 
 [unstable]
 

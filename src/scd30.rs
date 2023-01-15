@@ -1,4 +1,4 @@
-use crate::{I2cBus, I2cRef};
+use crate::{I2cBus, I2cRef, SensorMetrics};
 use anyhow::anyhow;
 use esp_idf_hal::{delay::Ets, i2c::I2cError};
 
@@ -28,6 +28,35 @@ pub fn bringup<'bus>(busman: &'bus I2cBus) -> anyhow::Result<Sensor<'bus>> {
     log::info!("enabled SCD30 continuous sampling mode");
 
     Ok(scd30)
+}
+
+pub fn run(mut scd30: Sensor, metrics: &'static SensorMetrics) {
+    loop {
+        // Keep looping until ready
+        match scd30.data_ready() {
+            Ok(true) => {}
+            Ok(false) => continue,
+            Err(error) => {
+                log::debug!("error waiting for SCD30 to become ready: {error:?}");
+                continue;
+            }
+        }
+
+        // Fetch data when available
+        match scd30.read_data() {
+            Err(error) => log::debug!("error reading from SCD30: {error:?}"),
+            Ok(sensor_scd30::Measurement { co2, temp, rh }) => {
+                metrics.scd30_co2.set_value(co2);
+                metrics.scd30_humidity.set_value(rh);
+                metrics.scd30_temp.set_value(temp);
+                log::info!("CO2: {co2:>8.3} ppm, Temp: {temp:>3.3} \u{00B0}C, Humidity: {rh:>3.3}%")
+            }
+        }
+
+        // if we've read data from the sensor, wait for 2 seconds before reading
+        // again
+        std::thread::sleep(std::time::Duration::from_secs(2));
+    }
 }
 
 fn retry<T>(mut retries: usize, mut f: impl FnMut() -> Result<T, Error>) -> Result<T, Error> {
