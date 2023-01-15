@@ -1,4 +1,3 @@
-pub mod logger;
 pub mod scd30;
 
 pub type I2cRef<'bus> = shared_bus::I2cProxy<'bus, SharedI2c>;

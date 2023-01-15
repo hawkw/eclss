@@ -1,5 +1,5 @@
 [package]
-name = "eclss-idf"
+name = "eclss"
 version = "0.1.0"
 authors = ["Eliza Weisman <eliza@buoyant.io>"]
 edition = "2021"
@@ -19,6 +19,7 @@ pio = ["esp-idf-sys/pio"]
 anyhow = "1"
 esp-idf-sys = { version = "0.32.1", features = ["binstart"] }
 esp-idf-hal = "0.40.1"
+esp-idf-svc = { version = "0.45" }
 log = { version = "0.4" }
 sensor-scd30 = { version = "0.4.0", default-features = false }
 shared-bus = { version = "0.2.0", features = ["std"] }

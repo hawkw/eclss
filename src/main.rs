@@ -1,12 +1,13 @@
 // If using the `binstart` feature of `esp-idf-sys`, always keep this module
 // imported
 use anyhow::Context;
-use eclss_idf::{logger, scd30};
+use eclss::scd30;
 use esp_idf_hal::{
     i2c::{I2cConfig, I2cDriver},
     peripherals::Peripherals,
     prelude::*,
 };
+use esp_idf_svc::log::EspLogger;
 use esp_idf_sys as _;
 
 fn main() -> anyhow::Result<()> {
@@ -15,7 +16,7 @@ fn main() -> anyhow::Result<()> {
     // https://github.com/esp-rs/esp-idf-template/issues/71
     esp_idf_sys::link_patches();
 
-    logger::init().expect("logger should only be initialized once");
+    EspLogger::initialize_default();
 
     log::info!("ECLSS is go!");
 
