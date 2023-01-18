@@ -1,4 +1,5 @@
 pub mod atomic;
+pub mod http;
 pub mod metric;
 pub mod scd30;
 pub mod wifi;

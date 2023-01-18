@@ -1,18 +1,18 @@
 // If using the `binstart` feature of `esp-idf-sys`, always keep this module
 // imported
 use anyhow::Context;
-use eclss::{scd30, wifi};
+use eclss::{scd30, wifi::EclssWifi};
 use esp_idf_hal::{
     i2c::{I2cConfig, I2cDriver},
     peripherals::Peripherals,
     prelude::*,
 };
-use esp_idf_svc::{eventloop::EspSystemEventLoop, log::EspLogger};
+use esp_idf_svc::{eventloop::EspSystemEventLoop, log::EspLogger, nvs::EspDefaultNvsPartition};
 use esp_idf_sys as _;
 
 static METRICS: eclss::SensorMetrics = eclss::SensorMetrics::new();
-const SSID: &str = env!("WIFI_SSID");
-const PASS: &str = env!("WIFI_PASS");
+// const SSID: &str = env!("WIFI_SSID");
+// const PASS: &str = env!("WIFI_PASS");
 
 fn main() -> anyhow::Result<()> {
     // It is necessary to call this function once. Otherwise, some patches to the
@@ -34,9 +34,10 @@ fn main() -> anyhow::Result<()> {
     let scl = peripherals.pins.gpio6;
 
     let sysloop = EspSystemEventLoop::take()?;
+    let nvs = EspDefaultNvsPartition::take()?;
 
-    let wifi = wifi::bringup(peripherals.modem, &sysloop, SSID, PASS)
-        .context("failed to bring up WiFi")?;
+    let mut wifi =
+        EclssWifi::new(peripherals.modem, &sysloop, nvs).context("failed to bring up WiFi")?;
 
     // Maximal I2C speed is 100 kHz and the master has to support clock
     // stretching. Sensirion recommends to operate the SCD30
