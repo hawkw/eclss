@@ -35,6 +35,8 @@ build-std = ["std", "panic_abort"]
 [env]
 # Note: these variables are not used when using pio builder (`cargo build --features pio`)
 # Builds against ESP-IDF stable (v4.4)
-ESP_IDF_VERSION = "tag:v4.4"
+# ESP_IDF_VERSION = "tag:v4.4"
+ESP_IDF_VERSION = { value = "branch:release/v4.4" }
 # Builds against ESP-IDF master (mainline)
 #ESP_IDF_VERSION = "master"
+ESP_IDF_SDKCONFIG_DEFAULTS = { value = "sdkconfig.defaults" }

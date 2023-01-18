@@ -11,9 +11,8 @@ use esp_idf_svc::{eventloop::EspSystemEventLoop, log::EspLogger};
 use esp_idf_sys as _;
 
 static METRICS: eclss::SensorMetrics = eclss::SensorMetrics::new();
-// XXX(eliza): disable wifi config for now since it breaks everything.
-// const SSID: &str = env!("WIFI_SSID");
-// const PASS: &str = env!("WIFI_PASS");
+const SSID: &str = env!("WIFI_SSID");
+const PASS: &str = env!("WIFI_PASS");
 
 fn main() -> anyhow::Result<()> {
     // It is necessary to call this function once. Otherwise, some patches to the
@@ -36,9 +35,8 @@ fn main() -> anyhow::Result<()> {
 
     let sysloop = EspSystemEventLoop::take()?;
 
-    // XXX(eliza): uncommenting this line makes the board boot loop...
-    // let wifi = wifi::bringup(peripherals.modem, &sysloop, SSID, PASS)
-    //     .context("failed to bring up WiFi")?;
+    let wifi = wifi::bringup(peripherals.modem, &sysloop, SSID, PASS)
+        .context("failed to bring up WiFi")?;
 
     // Maximal I2C speed is 100 kHz and the master has to support clock
     // stretching. Sensirion recommends to operate the SCD30

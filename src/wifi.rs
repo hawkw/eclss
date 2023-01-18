@@ -17,11 +17,13 @@ pub fn bringup(
     pass: &str,
 ) -> anyhow::Result<Box<EspWifi<'static>>> {
     log::info!("bringing up WiFi...");
-    // XXX(eliza): for some reason this line crashes the board...
     let mut wifi = Box::new(EspWifi::new(modem, sysloop.clone(), None)?);
 
     log::info!("scanning for access points...");
-    let aps = Wifi::scan(&mut *wifi).context("scanning for access points")?;
+
+    wifi.start()?;
+    log::info!("wifi started");
+    let aps = Wifi::scan(&mut *wifi).context("failed to scan for access points")?;
 
     let mut channel = None;
     for ap in aps {

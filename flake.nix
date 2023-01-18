@@ -14,7 +14,7 @@
     nixpkgs-esp-dev.url = "github:mirrexagon/nixpkgs-esp-dev";
   };
 
-  description = "flake for ESP32-c3 Rust development";
+  description = "flake for ESP32-C3 Rust development";
 
   outputs = { self, flake-compat, nixpkgs, flake-utils, nixpkgs-esp-dev, ... }:
     flake-utils.lib.eachDefaultSystem (system:
@@ -36,7 +36,7 @@
             # esp-idf-sys dependencies:
             cmake
             ninja
-            python3Packages.python
+            python311
             python3Packages.pip
             python3Packages.virtualenv
             (gcc-riscv32-esp32c3-elf-bin.override {
