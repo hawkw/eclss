@@ -1,5 +1,5 @@
 use crate::atomic::{AtomicF32, Ordering};
-use std::fmt;
+use embedded_svc::io;
 
 #[derive(Debug)]
 pub struct Gauge<'a> {
@@ -41,7 +41,10 @@ impl<'a> Gauge<'a> {
         self.value.load(Ordering::Acquire)
     }
 
-    pub fn render_prometheus(&self, writer: &mut impl fmt::Write) -> fmt::Result {
+    pub fn render_prometheus<R: io::Write>(
+        &self,
+        writer: &mut R,
+    ) -> Result<(), io::WriteFmtError<R::Error>> {
         let name = self.name;
         if let Some(help) = self.help {
             writeln!(writer, "# HELP {name} {help}",)?;

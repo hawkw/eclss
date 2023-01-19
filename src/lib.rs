@@ -8,6 +8,8 @@ pub type I2cRef<'bus> = shared_bus::I2cProxy<'bus, SharedI2c>;
 pub type I2cBus = shared_bus::BusManager<SharedI2c>;
 pub type SharedI2c = std::sync::Mutex<esp_idf_hal::i2c::I2cDriver<'static>>;
 
+use embedded_svc::io;
+
 #[derive(Debug)]
 pub struct SensorMetrics {
     pub scd30_temp: metric::Gauge<'static>,
@@ -26,7 +28,10 @@ impl SensorMetrics {
         }
     }
 
-    pub fn render_prometheus(&self, writer: &mut impl std::fmt::Write) -> std::fmt::Result {
+    pub fn render_prometheus<W: io::Write>(
+        &self,
+        writer: &mut W,
+    ) -> Result<(), io::WriteFmtError<W::Error>> {
         self.scd30_temp.render_prometheus(writer)?;
         self.scd30_co2.render_prometheus(writer)?;
         self.scd30_humidity.render_prometheus(writer)?;

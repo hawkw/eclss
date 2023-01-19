@@ -1,7 +1,7 @@
 // If using the `binstart` feature of `esp-idf-sys`, always keep this module
 // imported
 use anyhow::Context;
-use eclss::{scd30, wifi::EclssWifi};
+use eclss::{http, scd30, wifi::EclssWifi};
 use esp_idf_hal::{
     i2c::{I2cConfig, I2cDriver},
     peripherals::Peripherals,
@@ -39,6 +39,9 @@ fn main() -> anyhow::Result<()> {
     let mut wifi =
         EclssWifi::new(peripherals.modem, &sysloop, nvs).context("failed to bring up WiFi")?;
 
+    let server = http::start_server(wifi.access_points.clone(), &METRICS)
+        .context("failed to start HTTP server")?;
+
     // Maximal I2C speed is 100 kHz and the master has to support clock
     // stretching. Sensirion recommends to operate the SCD30
     // at a baud rate of 50 kHz or smaller.
@@ -52,7 +55,12 @@ fn main() -> anyhow::Result<()> {
         .spawn(move || scd30::run(scd30, &METRICS));
 
     loop {
-        // don't get killed by the doggy timer
-        std::thread::sleep(std::time::Duration::from_secs(1));
+        if let Ok(creds) = server.wifi_credentials.recv() {
+            log::info!("received WiFi credentials: {creds:?}");
+            match wifi.connect_to(&sysloop, creds) {
+                Ok(_) => log::info!("connected to WiFi access point"),
+                Err(e) => log::error!("failed to connect to WiFi access point: {e}"),
+            }
+        }
     }
 }

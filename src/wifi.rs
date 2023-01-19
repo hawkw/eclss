@@ -15,13 +15,25 @@ use esp_idf_svc::{
     },
 };
 
-use std::{fmt, time::Duration};
+use std::{
+    fmt,
+    sync::{Arc, RwLock},
+    time::Duration,
+};
 
 pub struct EclssWifi {
     wifi: Box<EspWifi<'static>>,
-    aps: Vec<AccessPointInfo>,
+    pub access_points: AccessPoints,
     wait_timeout: Duration,
 }
+
+#[derive(Debug, serde::Deserialize)]
+pub struct Credentials {
+    pub ssid: String,
+    pub password: String,
+}
+
+pub type AccessPoints = Arc<RwLock<Vec<AccessPointInfo>>>;
 
 impl EclssWifi {
     pub fn new(
@@ -36,40 +48,58 @@ impl EclssWifi {
         log::info!("wifi started");
 
         log::info!("scanning for access points...");
-        // let start_scan = wifi.start_scan(
-        //     &ScanConfig {
-        //         scan_type: config::ScanType::Active {
-        //             min: Duration::from_secs(1),
-        //             max: Duration::from_secs(20),
-        //         },
-        //         ..Default::default()
-        //     },
-        //     true,
-        // );
-        // log::info!("scan started: {:?}", start_scan);
-        // let aps = wifi
-        //     .get_scan_result()
-        //     .context("failed to get scan result")?;
-        let aps = Wifi::scan(&mut *wifi).context("failed to scan for access points")?;
+        let access_points = Wifi::scan(&mut *wifi).context("failed to scan for access points")?;
 
         let mut this = Self {
             wifi,
-            aps,
+            access_points: Arc::new(RwLock::new(access_points)),
             wait_timeout: Duration::from_secs(20),
         };
 
         this.configure(
             &sysloop,
-            Configuration::AccessPoint(Self::access_point_config()),
+            &Configuration::AccessPoint(Self::access_point_config()),
         )
         .context("configure in access point only mode")?;
         Ok(this)
     }
 
+    pub fn connect_to(
+        &mut self,
+        sysloop: &EspSystemEventLoop,
+        credentials: Credentials,
+    ) -> anyhow::Result<()> {
+        let channel = self.access_points.read().unwrap().iter().find_map(|ap| {
+            if ap.ssid.as_str() == credentials.ssid {
+                Some(ap.channel)
+            } else {
+                None
+            }
+        });
+
+        let config = Configuration::Mixed(
+            ClientConfiguration {
+                ssid: credentials
+                    .ssid
+                    .parse()
+                    .map_err(|_| anyhow::anyhow!("ssid too long"))?,
+                password: credentials
+                    .password
+                    .parse()
+                    .map_err(|_| anyhow::anyhow!("password too long"))?,
+                channel,
+                ..Default::default()
+            },
+            Self::access_point_config(),
+        );
+
+        self.configure(sysloop, &config)
+    }
+
     fn configure(
         &mut self,
         sysloop: &EspSystemEventLoop,
-        config: Configuration,
+        config: &Configuration,
     ) -> anyhow::Result<()> {
         self.wifi
             .set_configuration(&config)

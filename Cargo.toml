@@ -19,10 +19,12 @@ pio = ["esp-idf-sys/pio"]
 anyhow = "1"
 esp-idf-sys = { version = "0.32.1", features = ["binstart"] }
 esp-idf-hal = "0.40.1"
-esp-idf-svc = { version = "0.45", features = ["alloc"] }
+esp-idf-svc = { version = "0.45", features = ["std", "experimental"] }
 embedded-svc = { version = "0.24", features = ["alloc"] }
 log = { version = "0.4" }
 sensor-scd30 = { version = "0.4.0", default-features = false }
+serde = "1"
+serde_urlencoded = "0.7.1"
 shared-bus = { version = "0.2.0", features = ["std"] }
 
 [build-dependencies]

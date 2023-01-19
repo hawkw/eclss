@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+
+<body>
+    <form method="post" action="/wifi-select" enctype="application/x-www-form-urlencoded">
+        <p><label><b>Select ECLSS WiFi network</b></label></p>
+
+        <p>
+            <label>
+                WiFi Network (SSID):
+                <select name="ssid">
+                    {}
+                </select>
+            </label>
+        </p>
+        <p>
+            <label>
+                Password:
+                <input type="password" pattern=".{{8,}}" required title="8 characters minimum" name="password">
+            </label>
+        </p>
+
+        <p><input type="submit" value="Select"></p>
+    </form>
+</body>
+
+</html>
