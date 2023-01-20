@@ -104,7 +104,7 @@ impl EclssWifi {
         config: Configuration,
     ) -> anyhow::Result<()> {
         self.wifi
-            .set_configuration(&self.config)
+            .set_configuration(&config)
             .context("failed to set wifi config")?;
         self.wifi.start().context("failed to start WiFi")?;
 
