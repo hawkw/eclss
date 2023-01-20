@@ -25,6 +25,7 @@ pub struct EclssWifi {
     wifi: Box<EspWifi<'static>>,
     pub access_points: AccessPoints,
     wait_timeout: Duration,
+    config: Configuration,
 }
 
 #[derive(Debug, serde::Deserialize)]
@@ -42,7 +43,7 @@ impl EclssWifi {
         nvs: EspDefaultNvsPartition,
     ) -> anyhow::Result<Self> {
         log::info!("bringing up WiFi...");
-        let mut wifi = Box::new(EspWifi::new(modem, sysloop.clone(), None)?);
+        let mut wifi = Box::new(EspWifi::new(modem, sysloop.clone(), Some(nvs))?);
 
         wifi.start()?;
         log::info!("wifi started");
@@ -54,11 +55,12 @@ impl EclssWifi {
             wifi,
             access_points: Arc::new(RwLock::new(access_points)),
             wait_timeout: Duration::from_secs(20),
+            config: Default::default(),
         };
 
         this.configure(
             &sysloop,
-            &Configuration::AccessPoint(Self::access_point_config()),
+            Configuration::AccessPoint(Self::access_point_config()),
         )
         .context("configure in access point only mode")?;
         Ok(this)
@@ -93,16 +95,16 @@ impl EclssWifi {
             Self::access_point_config(),
         );
 
-        self.configure(sysloop, &config)
+        self.configure(sysloop, config)
     }
 
     fn configure(
         &mut self,
         sysloop: &EspSystemEventLoop,
-        config: &Configuration,
+        config: Configuration,
     ) -> anyhow::Result<()> {
         self.wifi
-            .set_configuration(&config)
+            .set_configuration(&self.config)
             .context("failed to set wifi config")?;
         self.wifi.start().context("failed to start WiFi")?;
 
@@ -115,9 +117,10 @@ impl EclssWifi {
         anyhow::ensure!(wait, "WiFi did not start within {:?}", self.wait_timeout);
 
         log::info!("WiFi started with configuration={config:#?}");
+        self.config = config;
 
         // nowhere to connect
-        if let Configuration::AccessPoint(_) = config {
+        if let Configuration::AccessPoint(_) = self.config {
             return Ok(());
         }
 

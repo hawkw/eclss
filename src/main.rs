@@ -11,8 +11,6 @@ use esp_idf_svc::{eventloop::EspSystemEventLoop, log::EspLogger, nvs::EspDefault
 use esp_idf_sys as _;
 
 static METRICS: eclss::SensorMetrics = eclss::SensorMetrics::new();
-// const SSID: &str = env!("WIFI_SSID");
-// const PASS: &str = env!("WIFI_PASS");
 
 fn main() -> anyhow::Result<()> {
     // It is necessary to call this function once. Otherwise, some patches to the
