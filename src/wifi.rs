@@ -51,18 +51,52 @@ impl EclssWifi {
         log::info!("scanning for access points...");
         let access_points = Wifi::scan(&mut *wifi).context("failed to scan for access points")?;
 
+        // restore a previous client configuration from NVS.
+        let config = match wifi.get_configuration() {
+            // if a previous client configuration was saved in NVS, map it to a
+            // mixed config so we can continue running an AP as well as connecting.
+            Ok(Configuration::Client(client_config)) => {
+                Configuration::Mixed(client_config, Self::access_point_config())
+            }
+            // if no previous configuration was saved, start in AP mode.
+            Ok(Configuration::None) => {
+                log::info!("no WiFi configuration saved; starting in access point mode");
+                Configuration::AccessPoint(Self::access_point_config())
+            }
+            // restore the previous access point or mixed configuration.
+            Ok(config) => config,
+            Err(error) => {
+                log::warn!("failed to load existing wifi configuration: {error}; starting in access point mode");
+                Configuration::AccessPoint(Self::access_point_config())
+            }
+        };
+        wifi.set_configuration(&config)
+            .context("failed to set WiFi configuration")?;
+
         let mut this = Self {
             wifi,
             access_points: Arc::new(RwLock::new(access_points)),
             wait_timeout: Duration::from_secs(20),
-            config: Default::default(),
+            config,
         };
 
-        this.configure(
-            &sysloop,
-            Configuration::AccessPoint(Self::access_point_config()),
-        )
-        .context("configure in access point only mode")?;
+        match (this.start_connect(sysloop), &this.config) {
+            // if we tried to start WiFi in a mixed client/AP configuration, and
+            // failed to connect, it's possible that we were previously
+            // connected to an AP that no longer exists. in that case, just go
+            // to AP mode.
+            (Err(error), Configuration::Mixed(_, ap)) => {
+                log::warn!("no joy connecting to previous WiFi network: {error}");
+                log::info!("maybe it no longer exists? switching to AP mode");
+                this.configure(sysloop, Configuration::AccessPoint(ap.clone()))
+                    .context("failed to start WiFi in AP mode")?;
+            }
+            // otherwise, if we can't start the wifi, that's bad.
+            (Err(error), _) => return Err(error).context("failed to start WiFi"),
+            (Ok(_), _) => log::info!("WiFi started!"),
+        }
+        // TODO(eliza): if we can't connect to a previous wifi AP, just start in AP mode?
+
         Ok(this)
     }
 
@@ -106,6 +140,11 @@ impl EclssWifi {
         self.wifi
             .set_configuration(&config)
             .context("failed to set wifi config")?;
+        self.config = config;
+        self.start_connect(sysloop)
+    }
+
+    fn start_connect(&mut self, sysloop: &EspSystemEventLoop) -> anyhow::Result<()> {
         self.wifi.start().context("failed to start WiFi")?;
 
         log::debug!("Waiting for wifi to start ({:?})...", self.wait_timeout);
@@ -116,8 +155,7 @@ impl EclssWifi {
             });
         anyhow::ensure!(wait, "WiFi did not start within {:?}", self.wait_timeout);
 
-        log::info!("WiFi started with configuration={config:#?}");
-        self.config = config;
+        log::info!("WiFi started with configuration={:#?}", self.config);
 
         // nowhere to connect
         if let Configuration::AccessPoint(_) = self.config {
