@@ -42,7 +42,7 @@ pub fn run(mut sensor: Sensor<'static>, metrics: &'static SensorMetrics) {
                 metrics.temp.sensors().bme680.set_value(temperature);
                 metrics.humidity.sensors().bme680.set_value(humidity);
                 if let Some(gas) = gas_resistance {
-                    log::info!("[BME680]: Gas resistance: {gas:>3.3} Ohm");
+                    log::info!("[BME680]: Gas resistance: {gas:>3.3} \u{2126}");
                     metrics.gas_resistance.sensors().set_value(gas);
                 }
             }
