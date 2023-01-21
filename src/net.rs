@@ -5,18 +5,13 @@ use embedded_svc::wifi::{
 use esp_idf_hal::{modem::Modem, peripheral::Peripheral};
 use esp_idf_svc::{
     eventloop::*,
+    mdns::EspMdns,
     netif::{EspNetif, EspNetifWait},
     nvs::EspDefaultNvsPartition,
-    // ping,
-    wifi::{
-        // config::{self, ScanConfig},
-        EspWifi,
-        WifiWait,
-    },
+    wifi::{EspWifi, WifiWait},
 };
 
 use std::{
-    fmt,
     sync::{Arc, RwLock},
     time::Duration,
 };
@@ -42,11 +37,11 @@ impl EclssWifi {
         sysloop: &EspSystemEventLoop,
         nvs: EspDefaultNvsPartition,
     ) -> anyhow::Result<Self> {
-        log::info!("bringing up WiFi...");
+        // log::info!("bringing up WiFi...");
         let mut wifi = Box::new(EspWifi::new(modem, sysloop.clone(), Some(nvs))?);
 
         wifi.start()?;
-        log::info!("wifi started");
+        // log::info!("wifi started");
 
         log::info!("scanning for access points...");
         let access_points = Wifi::scan(&mut *wifi).context("failed to scan for access points")?;
@@ -60,7 +55,7 @@ impl EclssWifi {
             }
             // if no previous configuration was saved, start in AP mode.
             Ok(Configuration::None) => {
-                log::info!("no WiFi configuration saved; starting in access point mode");
+                // log::info!("no WiFi configuration saved; starting in access point mode");
                 Configuration::AccessPoint(Self::access_point_config())
             }
             // restore the previous access point or mixed configuration.
@@ -87,7 +82,7 @@ impl EclssWifi {
             // to AP mode.
             (Err(error), Configuration::Mixed(_, ap)) => {
                 log::warn!("no joy connecting to previous WiFi network: {error}");
-                log::info!("maybe it no longer exists? switching to AP mode");
+                // log::info!("maybe it no longer exists? switching to AP mode");
                 this.configure(sysloop, Configuration::AccessPoint(ap.clone()))
                     .context("failed to start WiFi in AP mode")?;
             }
@@ -155,7 +150,7 @@ impl EclssWifi {
             });
         anyhow::ensure!(wait, "WiFi did not start within {:?}", self.wait_timeout);
 
-        log::info!("WiFi started with configuration={:#?}", self.config);
+        // log::info!("WiFi started with configuration={:#?}", self.config);
 
         // nowhere to connect
         if let Configuration::AccessPoint(_) = self.config {
@@ -166,7 +161,7 @@ impl EclssWifi {
             .connect()
             .context("failed to connect to WiFi network")?;
 
-        log::debug!("Waiting for netif ({:?})...", self.wait_timeout);
+        // log::debug!("Waiting for netif ({:?})...", self.wait_timeout);
         let netif_wait = EspNetifWait::new::<EspNetif>(self.wifi.sta_netif(), sysloop)
             .context("failed to create wait for STA netif")?
             .wait_with_timeout(self.wait_timeout, || {
@@ -195,4 +190,35 @@ impl EclssWifi {
             ..Default::default()
         }
     }
+}
+
+pub fn init_mdns(mdns: &mut EspMdns) -> anyhow::Result<()> {
+    let txt = &[("board", "esp32c3"), ("version", env!("CARGO_PKG_VERSION"))];
+    mdns.set_hostname("eclss").context("set mDNS hostname")?;
+    mdns.set_instance_name("Environmental Control and Life Support Systems")
+        .context("set mDNS instance name")?;
+    mdns.add_service(None, "_http", "_tcp", crate::http::HTTP_PORT, txt)
+        .context("add HTTP mDNS service")?;
+    mdns.add_service(None, "_https", "_tcp", crate::http::HTTPS_PORT, txt)
+        .context("add HTTPS mDNS service")?;
+    mdns.add_service(
+        None,
+        "_prometheus-http",
+        "_tcp",
+        crate::http::HTTP_PORT,
+        txt,
+    )
+    .context("add Prometheus HTTP mDNS service")?;
+    mdns.add_service(
+        None,
+        "_prometheus-https",
+        "_tcp",
+        crate::http::HTTPS_PORT,
+        txt,
+    )
+    .context("add Prometheus HTTPS mDNS service")?;
+
+    log::info!("advertising mDNS services");
+
+    Ok(())
 }

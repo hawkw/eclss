@@ -2,9 +2,9 @@ pub mod atomic;
 pub mod bme680;
 pub mod http;
 pub mod metric;
+pub mod net;
 mod retry;
 pub mod scd30;
-pub mod wifi;
 
 pub type I2cRef<'bus> = shared_bus::I2cProxy<'bus, SharedI2c>;
 pub type I2cBus = shared_bus::BusManager<SharedI2c>;

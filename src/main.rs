@@ -1,14 +1,15 @@
 // If using the `binstart` feature of `esp-idf-sys`, always keep this module
 // imported
 use anyhow::Context;
-use eclss::{bme680, http, scd30, wifi::EclssWifi};
+use eclss::{bme680, http, net, scd30};
 use esp_idf_hal::{
     i2c::{I2cConfig, I2cDriver},
     peripherals::Peripherals,
     prelude::*,
 };
 use esp_idf_svc::{
-    eventloop::EspSystemEventLoop, log::EspLogger, nvs::EspDefaultNvsPartition, sntp::EspSntp,
+    eventloop::EspSystemEventLoop, log::EspLogger, mdns::EspMdns, nvs::EspDefaultNvsPartition,
+    sntp::EspSntp,
 };
 use esp_idf_sys as _;
 
@@ -37,25 +38,25 @@ fn main() -> anyhow::Result<()> {
     let scl = peripherals.pins.gpio6;
 
     let _sntp = EspSntp::new_default().context("failed to initialize SNTP")?;
-    let sysloop = EspSystemEventLoop::take()?;
-    let nvs = EspDefaultNvsPartition::take()?;
+    let sysloop = EspSystemEventLoop::take().context("failed to initialize system event loop")?;
+    let nvs =
+        EspDefaultNvsPartition::take().context("failed to initialize non-volatile storage")?;
+    let mut mdns = EspMdns::take().context("failed to initialize mDNS")?;
 
-    let mut wifi =
-        EclssWifi::new(peripherals.modem, &sysloop, nvs).context("failed to bring up WiFi")?;
+    let mut wifi = net::EclssWifi::new(peripherals.modem, &sysloop, nvs)?;
+    net::init_mdns(&mut mdns)?;
 
-    let server = http::start_server(wifi.access_points.clone(), &METRICS)
-        .context("failed to start HTTP server")?;
+    let server = http::start_server(wifi.access_points.clone(), &METRICS)?;
 
     // Maximal I2C speed is 100 kHz and the master has to support clock
     // stretching. Sensirion recommends to operate the SCD30
     // at a baud rate of 50 kHz or smaller.
     let config = I2cConfig::new().baudrate(50u32.kHz().into());
-    let i2c = I2cDriver::new(i2c, sda, scl, &config).context("constructing I2C driver")?;
-    let bus = shared_bus::new_std!(I2cDriver = i2c).expect("bus manager is only initialized once!");
+    let i2c = I2cDriver::new(i2c, sda, scl, &config)?;
+    let bus = shared_bus::new_std!(I2cDriver = i2c).unwrap();
 
     // bring up sensors
     // TODO(eliza): use the sensors to calibrate each other...
-    let mut has_sensors = false;
     let scd30 = scd30::bringup(&bus).context("bringing up SCD30 failed");
     let bme680 = bme680::bringup(&bus).context("bringing up BME680 failed");
 
@@ -68,7 +69,7 @@ fn main() -> anyhow::Result<()> {
     if let Err(error) = scd30_started {
         log::error!("failed to start SCD30: {error}");
     } else {
-        has_sensors = true;
+        // has_sensors = true;
     }
 
     let bme680_started = bme680.and_then(|sensor| {
@@ -80,12 +81,12 @@ fn main() -> anyhow::Result<()> {
     if let Err(error) = bme680_started {
         log::error!("failed to start BME680: {error}");
     } else {
-        has_sensors = true;
+        // has_sensors = true;
     }
 
-    if !has_sensors {
-        log::error!("/!\\ EXTREMELY TRAGIC ERROR ... NO SENSORS BROUGHT UP SUCCESSFULLY!")
-    }
+    // if !has_sensors {
+    //     log::error!("/!\\ EXTREMELY TRAGIC ERROR ... NO SENSORS BROUGHT UP SUCCESSFULLY!")
+    // }
 
     loop {
         if let Ok(creds) = server.wifi_credentials.recv() {

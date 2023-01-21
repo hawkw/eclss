@@ -6,7 +6,7 @@ edition = "2021"
 resolver = "2"
 
 [profile.release]
-opt-level = "s"
+opt-level = "z"
 
 [profile.dev]
 debug = true # Symbols are nice and they don't increase the size on flash
@@ -16,14 +16,14 @@ opt-level = "z"
 pio = ["esp-idf-sys/pio"]
 
 [dependencies]
-anyhow = "1"
+anyhow = { version = "1", default-features = false }
 esp-idf-sys = { version = "0.32.1", features = ["binstart"] }
 esp-idf-hal = "0.40.1"
-esp-idf-svc = { version = "0.45", features = ["std", "experimental"] }
+esp-idf-svc = { version = "0.45", features = ["alloc", "experimental"] }
 embedded-svc = { version = "0.24", features = ["alloc"] }
-log = { version = "0.4" }
+log = { version = "0.4", features = ["max_level_warn"] }
 sensor-scd30 = { version = "0.4.0", default-features = false }
-serde = "1"
+serde = { version = "1", default-features = false, features = ["derive"] }
 serde_urlencoded = "0.7.1"
 shared-bus = { version = "0.2.0", features = ["std"] }
 bosch-bme680 = "0.1.0"
@@ -33,3 +33,29 @@ embuild = "0.31.0"
 
 # [patch.crates-io]
 # esp-idf-svc = { git = "https://github.com/esp-rs/esp-idf-svc" }
+
+[package.metadata.esp-idf-sys]
+esp_idf_tools_install_dir = "global"
+esp_idf_sdkconfig = "sdkconfig"
+esp_idf_sdkconfig_defaults = ["sdkconfig.defaults"]
+# native builder only
+esp_idf_version = "branch:release/v4.4"
+# pick and choose which ESP-IDF components are included, to try and reduce flash
+# size.
+# NOTE: if changing these, changes are not reflected unless  you do a `cargo clean`.
+esp_idf_components = [
+    "esp32c3",
+    "esp_common",
+    "esp_http_client",
+    "esp_http_server",
+    "esp_https_server",
+    "esp_wifi",
+    "log",
+    "hal",
+    "nvs_flash",
+    "pthread",
+    # not actually using the websocket client, but esp-idf-svc appears to not
+    # build without it...
+    "esp_websocket_client",
+    "mdns",
+]

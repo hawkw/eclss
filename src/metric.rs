@@ -38,11 +38,8 @@ impl<'a, S> Gauge<'a, S> {
             let value = sensor.value();
             let time = sensor.timestamp.load(Ordering::Acquire);
             let sensor_name = sensor.name;
-            if time > 0 {
-                writeln!(writer, "{name}{{sensor=\"{sensor_name}\"}} {value} {time}")?;
-            } else {
-                writeln!(writer, "{name}{{sensor=\"{sensor_name}\"}} {value}")?;
-            }
+
+            writeln!(writer, "{name}{{sensor=\"{sensor_name}\"}} {value} {time}")?;
         }
         writer.write(b"\n").map_err(io::WriteFmtError::Other)?;
 

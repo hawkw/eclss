@@ -1,23 +1,30 @@
-use crate::{wifi, SensorMetrics};
+use crate::{net, SensorMetrics};
 use anyhow::Context;
 use embedded_svc::{
     http::Method,
     io::{Read, Write},
 };
-use esp_idf_svc::http::server::EspHttpServer;
+use esp_idf_svc::http::server::{Configuration, EspHttpServer};
 use std::sync::mpsc;
 
 pub struct Server {
-    pub wifi_credentials: mpsc::Receiver<wifi::Credentials>,
+    pub wifi_credentials: mpsc::Receiver<net::Credentials>,
     server: EspHttpServer,
 }
 
+pub const HTTP_PORT: u16 = 80;
+pub const HTTPS_PORT: u16 = 443;
+
 pub fn start_server(
-    access_points: wifi::AccessPoints,
+    access_points: net::AccessPoints,
     metrics: &'static SensorMetrics,
 ) -> anyhow::Result<Server> {
-    let mut server =
-        EspHttpServer::new(&Default::default()).context("failed to start HTTP server")?;
+    let mut server = EspHttpServer::new(&Configuration {
+        http_port: HTTP_PORT,
+        https_port: HTTPS_PORT,
+        ..Default::default()
+    })
+    .context("failed to start HTTP server")?;
     let (tx, rx) = mpsc::sync_channel(1);
     server
         .fn_handler("/", Method::Get, move |req| {
@@ -37,14 +44,7 @@ pub fn start_server(
             read_body(&mut req, &mut body)?;
 
             let credentials = serde_urlencoded::from_bytes(&body)?;
-            let content = r#"
-                <!DOCTYPE html>
-                <html>
-                    <body>
-                        Submitted!
-                    </body>
-                </html>
-                "#;
+            let content = r#"<!DOCTYPE html><html><body>Submitted!</body></html>"#;
             req.into_ok_response()?.write_all(content.as_bytes())?;
             tx.send(credentials).context("sending wifi credentials")?;
             Ok(())
@@ -86,7 +86,6 @@ fn read_body<R: Read>(response: &mut R, buf: &mut Vec<u8>) -> anyhow::Result<usi
 
     anyhow::ensure!(total_bytes_read > 0, "empty request body");
 
-    log::trace!("truncated {} bytes", buf.len() - total_bytes_read);
     buf.truncate(total_bytes_read);
 
     Ok(total_bytes_read)
