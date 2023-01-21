@@ -7,7 +7,9 @@ use esp_idf_hal::{
     peripherals::Peripherals,
     prelude::*,
 };
-use esp_idf_svc::{eventloop::EspSystemEventLoop, log::EspLogger, nvs::EspDefaultNvsPartition};
+use esp_idf_svc::{
+    eventloop::EspSystemEventLoop, log::EspLogger, nvs::EspDefaultNvsPartition, sntp::EspSntp,
+};
 use esp_idf_sys as _;
 
 static METRICS: eclss::SensorMetrics = eclss::SensorMetrics::new();
@@ -31,6 +33,7 @@ fn main() -> anyhow::Result<()> {
     let sda = peripherals.pins.gpio5;
     let scl = peripherals.pins.gpio6;
 
+    let _sntp = EspSntp::new_default().context("failed to initialize SNTP")?;
     let sysloop = EspSystemEventLoop::take()?;
     let nvs = EspDefaultNvsPartition::take()?;
 

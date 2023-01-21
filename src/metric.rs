@@ -1,11 +1,13 @@
-use crate::atomic::{AtomicF32, Ordering};
+use crate::atomic::{AtomicF32, AtomicU64, Ordering};
 use embedded_svc::io;
+use esp_idf_svc::systime::EspSystemTime;
 
 #[derive(Debug)]
 pub struct Gauge<'a> {
     name: &'a str,
     help: Option<&'a str>,
     value: AtomicF32,
+    timestamp: AtomicU64,
     // labels: Option<&'a [(&'a str, &'a str)]>,
 }
 
@@ -15,6 +17,7 @@ impl<'a> Gauge<'a> {
             name,
             help: None,
             value: AtomicF32::zero(),
+            timestamp: AtomicU64::new(0),
             // labels: None,
         }
     }
@@ -35,6 +38,8 @@ impl<'a> Gauge<'a> {
 
     pub fn set_value(&self, value: f32) {
         self.value.store(value, Ordering::Release);
+        let timestamp = EspSystemTime.now().as_secs();
+        self.timestamp.store(timestamp, Ordering::Release)
     }
 
     pub fn value(&self) -> f32 {
@@ -51,7 +56,13 @@ impl<'a> Gauge<'a> {
         }
 
         writeln!(writer, "# TYPE {name} gauge")?;
-        writeln!(writer, "{name} {}", self.value())?;
+        let value = self.value();
+        let time = self.timestamp.load(Ordering::Acquire);
+        if time > 0 {
+            writeln!(writer, "{name} {value} {time}")?;
+        } else {
+            writeln!(writer, "{name} {value}")?;
+        }
         Ok(())
     }
 }
