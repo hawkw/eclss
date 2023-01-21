@@ -54,18 +54,38 @@ fn main() -> anyhow::Result<()> {
     let bus = shared_bus::new_std!(I2cDriver = i2c).expect("bus manager is only initialized once!");
 
     // bring up sensors
-    let scd30 = scd30::bringup(&bus).context("bringing up SCD30 failed")?;
-    let bme680 = bme680::bringup(&bus).context("bringing up BME680 failed")?;
-
     // TODO(eliza): use the sensors to calibrate each other...
-    std::thread::Builder::new()
-        .stack_size(STACK_SIZE)
-        .spawn(move || scd30::run(scd30, &METRICS))
-        .context("failed to spawn SCD30 driver thread")?;
-    std::thread::Builder::new()
-        .stack_size(STACK_SIZE)
-        .spawn(move || bme680::run(bme680, &METRICS))
-        .context("failed to spawn SCD30 driver thread")?;
+    let mut has_sensors = false;
+    let scd30 = scd30::bringup(&bus).context("bringing up SCD30 failed");
+    let bme680 = bme680::bringup(&bus).context("bringing up BME680 failed");
+
+    let scd30_started = scd30.and_then(|sensor| {
+        std::thread::Builder::new()
+            .stack_size(STACK_SIZE)
+            .spawn(move || scd30::run(sensor, &METRICS))
+            .context("spawning SCD30 driver thread failed")
+    });
+    if let Err(error) = scd30_started {
+        log::error!("failed to start SCD30: {error}");
+    } else {
+        has_sensors = true;
+    }
+
+    let bme680_started = bme680.and_then(|sensor| {
+        std::thread::Builder::new()
+            .stack_size(STACK_SIZE)
+            .spawn(move || bme680::run(sensor, &METRICS))
+            .context("spawning BME680 driver thread failed")
+    });
+    if let Err(error) = bme680_started {
+        log::error!("failed to start BME680: {error}");
+    } else {
+        has_sensors = true;
+    }
+
+    if !has_sensors {
+        log::error!("/!\\ EXTREMELY TRAGIC ERROR ... NO SENSORS BROUGHT UP SUCCESSFULLY!")
+    }
 
     loop {
         if let Ok(creds) = server.wifi_credentials.recv() {
