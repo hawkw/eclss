@@ -1,40 +1,65 @@
 use crate::atomic::{AtomicF32, AtomicU64, Ordering};
 use embedded_svc::io;
 use esp_idf_svc::systime::EspSystemTime;
-
 #[derive(Debug)]
-pub struct Gauge<'a> {
-    name: &'a str,
-    help: Option<&'a str>,
-    value: AtomicF32,
-    timestamp: AtomicU64,
-    // labels: Option<&'a [(&'a str, &'a str)]>,
+pub struct Gauge<'a, S> {
+    pub name: &'a str,
+    pub help: &'a str,
+    pub sensors: S,
 }
 
-impl<'a> Gauge<'a> {
+#[derive(Debug)]
+pub struct SensorGauge<'a> {
+    value: AtomicF32,
+    timestamp: AtomicU64,
+    name: &'a str,
+}
+
+impl<'a, S> Gauge<'a, S> {
+    pub fn sensors(&self) -> &S {
+        &self.sensors
+    }
+
+    pub fn render_prometheus<'metrics, R: io::Write>(
+        &'metrics self,
+        writer: &mut R,
+    ) -> Result<(), io::WriteFmtError<R::Error>>
+    where
+        &'metrics S: IntoIterator<Item = &'metrics SensorGauge<'a>>,
+    {
+        let Self {
+            sensors,
+            name,
+            help,
+        } = self;
+
+        writeln!(writer, "# HELP {name} {help}\n# TYPE {name} gauge")?;
+        for sensor in sensors {
+            let value = sensor.value();
+            let time = sensor.timestamp.load(Ordering::Acquire);
+            let sensor_name = sensor.name;
+            if time > 0 {
+                writeln!(writer, "{name}{{sensor=\"{sensor_name}\"}} {value} {time}")?;
+            } else {
+                writeln!(writer, "{name}{{sensor=\"{sensor_name}\"}} {value}")?;
+            }
+        }
+        writer.write(b"\n").map_err(io::WriteFmtError::Other)?;
+
+        Ok(())
+    }
+}
+
+// === impl SensorGauge ===
+
+impl<'a> SensorGauge<'a> {
     pub const fn new(name: &'a str) -> Self {
         Self {
-            name,
-            help: None,
             value: AtomicF32::zero(),
             timestamp: AtomicU64::new(0),
-            // labels: None,
+            name,
         }
     }
-
-    pub const fn with_help(self, help: &'a str) -> Self {
-        Self {
-            help: Some(help),
-            ..self
-        }
-    }
-
-    // pub const fn with_labels(self, labels: &'a [(&'a str, &'a str)]) -> Self {
-    //     Self {
-    //         labels: Some(labels),
-    //         ..self
-    //     }
-    // }
 
     pub fn set_value(&self, value: f32) {
         self.value.store(value, Ordering::Release);
@@ -45,24 +70,13 @@ impl<'a> Gauge<'a> {
     pub fn value(&self) -> f32 {
         self.value.load(Ordering::Acquire)
     }
+}
 
-    pub fn render_prometheus<R: io::Write>(
-        &self,
-        writer: &mut R,
-    ) -> Result<(), io::WriteFmtError<R::Error>> {
-        let name = self.name;
-        if let Some(help) = self.help {
-            writeln!(writer, "# HELP {name} {help}",)?;
-        }
+impl<'metric, 'a> IntoIterator for &'a SensorGauge<'metric> {
+    type Item = &'a SensorGauge<'metric>;
 
-        writeln!(writer, "# TYPE {name} gauge")?;
-        let value = self.value();
-        let time = self.timestamp.load(Ordering::Acquire);
-        if time > 0 {
-            writeln!(writer, "{name} {value} {time}")?;
-        } else {
-            writeln!(writer, "{name} {value}")?;
-        }
-        Ok(())
+    type IntoIter = std::iter::Once<&'a SensorGauge<'metric>>;
+    fn into_iter(self) -> Self::IntoIter {
+        std::iter::once(self)
     }
 }

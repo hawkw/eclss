@@ -1,7 +1,7 @@
 // If using the `binstart` feature of `esp-idf-sys`, always keep this module
 // imported
 use anyhow::Context;
-use eclss::{http, scd30, wifi::EclssWifi};
+use eclss::{bme680, http, scd30, wifi::EclssWifi};
 use esp_idf_hal::{
     i2c::{I2cConfig, I2cDriver},
     peripherals::Peripherals,
@@ -13,6 +13,9 @@ use esp_idf_svc::{
 use esp_idf_sys as _;
 
 static METRICS: eclss::SensorMetrics = eclss::SensorMetrics::new();
+
+// apparently Rust tasks need more stack size than the default on ESP32C3
+const STACK_SIZE: usize = 7000;
 
 fn main() -> anyhow::Result<()> {
     // It is necessary to call this function once. Otherwise, some patches to the
@@ -50,10 +53,19 @@ fn main() -> anyhow::Result<()> {
     let i2c = I2cDriver::new(i2c, sda, scl, &config).context("constructing I2C driver")?;
     let bus = shared_bus::new_std!(I2cDriver = i2c).expect("bus manager is only initialized once!");
 
-    let scd30 = scd30::bringup(&bus).context("bringing up SCD30")?;
-    let scd30_thread = std::thread::Builder::new()
-        .stack_size(7000)
-        .spawn(move || scd30::run(scd30, &METRICS));
+    // bring up sensors
+    let scd30 = scd30::bringup(&bus).context("bringing up SCD30 failed")?;
+    let bme680 = bme680::bringup(&bus).context("bringing up BME680 failed")?;
+
+    // TODO(eliza): use the sensors to calibrate each other...
+    std::thread::Builder::new()
+        .stack_size(STACK_SIZE)
+        .spawn(move || scd30::run(scd30, &METRICS))
+        .context("failed to spawn SCD30 driver thread")?;
+    std::thread::Builder::new()
+        .stack_size(STACK_SIZE)
+        .spawn(move || bme680::run(bme680, &METRICS))
+        .context("failed to spawn SCD30 driver thread")?;
 
     loop {
         if let Ok(creds) = server.wifi_credentials.recv() {

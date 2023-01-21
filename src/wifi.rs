@@ -196,19 +196,3 @@ impl EclssWifi {
         }
     }
 }
-
-fn retry<T, E: fmt::Debug>(
-    mut retries: usize,
-    mut f: impl FnMut() -> Result<T, E>,
-) -> Result<T, E> {
-    loop {
-        match f() {
-            Ok(val) => return Ok(val),
-            Err(error) if retries == 0 => return Err(error),
-            Err(error) => {
-                retries -= 1;
-                log::warn!("wifi retrying: {error:?} ({retries} retries remaining)");
-            }
-        }
-    }
-}
