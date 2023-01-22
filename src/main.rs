@@ -1,7 +1,7 @@
 // If using the `binstart` feature of `esp-idf-sys`, always keep this module
 // imported
 use anyhow::Context;
-use eclss::{bme680, http, net, scd30};
+use eclss::{bme680, http, net, scd30, ws2812};
 use esp_idf_hal::{
     i2c::{I2cConfig, I2cDriver},
     peripherals::Peripherals,
@@ -36,6 +36,9 @@ fn main() -> anyhow::Result<()> {
     let i2c = peripherals.i2c0;
     let sda = peripherals.pins.gpio5;
     let scl = peripherals.pins.gpio6;
+    // QT Py C3 neopixel is on GPIO 2
+    let mut neopixel = ws2812::NeoPixel::new(peripherals.pins.gpio2, peripherals.rmt.channel0)?;
+    neopixel.set_color(255, 0, 0).context("set neopixel red")?;
 
     let _sntp = EspSntp::new_default().context("failed to initialize SNTP")?;
     let sysloop = EspSystemEventLoop::take().context("failed to initialize system event loop")?;
