@@ -1,6 +1,5 @@
 use crate::{I2cBus, I2cRef, Retry, SensorMetrics};
 use esp_idf_hal::delay::Ets;
-use std::{thread, time::Duration};
 
 pub type Sensor<'bus> = bosch_bme680::Bme680<I2cRef<'bus>, Ets>;
 
@@ -25,11 +24,16 @@ pub fn bringup<'bus>(busman: &'bus I2cBus) -> anyhow::Result<Sensor<'bus>> {
         .map_err(|error| anyhow::anyhow!("failed to connect to BME680: {error:?}"))
 }
 
-pub fn run(mut sensor: Sensor<'static>, metrics: &'static SensorMetrics) {
-    thread::sleep(Duration::from_millis(100));
+pub async fn run(
+    mut sensor: Sensor<'static>,
+    metrics: &'static SensorMetrics,
+) -> anyhow::Result<()> {
+    embassy_time::Timer::after(embassy_time::Duration::from_millis(1000)).await;
 
     loop {
-        thread::sleep(Duration::from_secs(2));
+        // if we've read data from the sensor, wait for 2 seconds before reading
+        // again
+        embassy_time::Timer::after(embassy_time::Duration::from_secs(2)).await;
         match sensor.measure() {
             Ok(bosch_bme680::MeasurmentData {
                 temperature,

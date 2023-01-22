@@ -1,3 +1,4 @@
+#![feature(type_alias_impl_trait)]
 pub mod atomic;
 pub mod bme680;
 pub mod http;

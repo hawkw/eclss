@@ -41,7 +41,10 @@ pub fn bringup<'bus>(busman: &'bus I2cBus) -> anyhow::Result<Sensor<'bus>> {
     Ok(scd30)
 }
 
-pub fn run(mut scd30: Sensor, metrics: &'static SensorMetrics) {
+pub async fn run(
+    mut scd30: Sensor<'static>,
+    metrics: &'static SensorMetrics,
+) -> anyhow::Result<()> {
     loop {
         // Keep looping until ready
         match scd30.data_ready() {
@@ -66,6 +69,6 @@ pub fn run(mut scd30: Sensor, metrics: &'static SensorMetrics) {
 
         // if we've read data from the sensor, wait for 2 seconds before reading
         // again
-        std::thread::sleep(std::time::Duration::from_secs(2));
+        embassy_time::Timer::after(embassy_time::Duration::from_secs(2)).await;
     }
 }
