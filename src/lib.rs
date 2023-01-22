@@ -51,7 +51,7 @@ impl SensorMetrics {
             },
             pressure: metric::Gauge {
                 name: "pressure_hpa",
-                help: "BME680 pressure, in hectopascals (hPa).",
+                help: "Barometric pressure, in hectopascals (hPa).",
                 sensors: metric::SensorGauge::new(BME680),
             },
             gas_resistance: metric::Gauge {
@@ -78,7 +78,7 @@ impl BothTemps {
     pub const fn new() -> Self {
         Self {
             bme680: metric::SensorGauge::new("BME680"),
-            scd30: metric::SensorGauge::new("SCD30"),
+            scd30: metric::SensorGauge::new("SHT31"),
         }
     }
 }
