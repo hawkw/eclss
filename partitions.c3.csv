@@ -1,0 +1,7 @@
+# ESP-IDF Partition Table
+# Name,   Type, SubType, Offset,  Size, Flags
+nvs,      data, nvs,     0x9000,  0x6000,
+phy_init, data, phy,     0xf000,  0x1000,
+# reserve a 3MB app partition, because we don't
+# intend to use OTA updates
+factory,  app,  factory, 0x10000, 3M,
