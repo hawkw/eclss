@@ -5,12 +5,19 @@ authors = ["Eliza Weisman <eliza@buoyant.io>"]
 edition = "2021"
 resolver = "2"
 
+
 [profile.release]
 opt-level = "z"
+lto = "fat"
+codegen-units = 1
+incremental = false
 
 [profile.dev]
 debug = true # Symbols are nice and they don't increase the size on flash
 opt-level = "z"
+lto = "fat"
+codegen-units = 1
+incremental = false
 
 [features]
 pio = ["esp-idf-sys/pio"]
@@ -21,7 +28,7 @@ esp-idf-sys = { version = "0.32.1", features = ["binstart"] }
 esp-idf-hal = "0.40.1"
 esp-idf-svc = { version = "0.45", features = ["alloc", "experimental"] }
 embedded-svc = { version = "0.24", features = ["alloc"] }
-log = { version = "0.4", features = ["max_level_warn"] }
+log = { version = "0.4", features = ["max_level_info"] }
 sensor-scd30 = { version = "0.4.0", default-features = false }
 serde = { version = "1", default-features = false, features = ["derive"] }
 serde_urlencoded = "0.7.1"
@@ -44,8 +51,8 @@ esp_idf_version = "branch:release/v4.4"
 # size.
 # NOTE: if changing these, changes are not reflected unless  you do a `cargo clean`.
 esp_idf_components = [
-    "esp32c3",
-    "esp_common",
+    # "esp32c3",
+    # "esp_common",
     "esp_http_client",
     "esp_http_server",
     "esp_https_server",
@@ -53,7 +60,7 @@ esp_idf_components = [
     "log",
     "hal",
     "nvs_flash",
-    "pthread",
+    # "pthread",
     # not actually using the websocket client, but esp-idf-svc appears to not
     # build without it...
     "esp_websocket_client",

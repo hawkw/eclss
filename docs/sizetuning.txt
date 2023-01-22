@@ -1,0 +1,7 @@
+
+
+    1043184/1048576 bytes   # thin LTO, opt-level=z
+     874000/1048576 bytes   #  fat LTO, opt-level=z
+     883584/1048576 bytes   #  fat LTO, opt-level=s
+     869232/1048576 bytes   #  fat LTO, opt-level=z, codegen-units=1, incremental=false
+
