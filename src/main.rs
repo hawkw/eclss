@@ -6,6 +6,7 @@ use esp_idf_hal::{
     i2c::{I2cConfig, I2cDriver},
     peripherals::Peripherals,
     prelude::*,
+    task,
 };
 use esp_idf_svc::{
     eventloop::EspSystemEventLoop, log::EspLogger, mdns::EspMdns, nvs::EspDefaultNvsPartition,
@@ -15,14 +16,14 @@ use esp_idf_sys as _;
 
 static METRICS: eclss::SensorMetrics = eclss::SensorMetrics::new();
 
-// apparently Rust tasks need more stack size than the default on ESP32C3
-const STACK_SIZE: usize = 7000;
-
 fn main() -> anyhow::Result<()> {
     // It is necessary to call this function once. Otherwise, some patches to the
     // runtime implemented by esp-idf-sys might not link properly. See
     // https://github.com/esp-rs/esp-idf-template/issues/71
     esp_idf_sys::link_patches();
+    esp_idf_hal::task::critical_section::link();
+    esp_idf_svc::timer::embassy_time::driver::link();
+    esp_idf_svc::timer::embassy_time::queue::link();
 
     // let logger = EspLogger;
     EspLogger::initialize_default();
@@ -41,15 +42,16 @@ fn main() -> anyhow::Result<()> {
     neopixel.set_color(255, 0, 0).context("set neopixel red")?;
 
     let _sntp = EspSntp::new_default().context("failed to initialize SNTP")?;
-    let sysloop = EspSystemEventLoop::take().context("failed to initialize system event loop")?;
+    let mut sysloop =
+        EspSystemEventLoop::take().context("failed to initialize system event loop")?;
     let nvs =
         EspDefaultNvsPartition::take().context("failed to initialize non-volatile storage")?;
     let mut mdns = EspMdns::take().context("failed to initialize mDNS")?;
 
-    let mut wifi = net::EclssWifi::new(peripherals.modem, &sysloop, nvs)?;
+    let wifi = net::EclssWifi::new(peripherals.modem, &mut sysloop, nvs)?;
     net::init_mdns(&mut mdns)?;
 
-    let server = http::start_server(wifi.access_points.clone(), &METRICS)?;
+    let server = http::start_server(&wifi, &METRICS)?;
 
     // Maximal I2C speed is 100 kHz and the master has to support clock
     // stretching. Sensirion recommends to operate the SCD30
@@ -63,43 +65,15 @@ fn main() -> anyhow::Result<()> {
     let scd30 = scd30::bringup(&bus).context("bringing up SCD30 failed");
     let bme680 = bme680::bringup(&bus).context("bringing up BME680 failed");
 
-    let scd30_started = scd30.and_then(|sensor| {
-        std::thread::Builder::new()
-            .stack_size(STACK_SIZE)
-            .spawn(move || scd30::run(sensor, &METRICS))
-            .context("spawning SCD30 driver thread failed")
-    });
-    if let Err(error) = scd30_started {
-        log::error!("failed to start SCD30: {error}");
-    } else {
-        // has_sensors = true;
-    }
-
-    let bme680_started = bme680.and_then(|sensor| {
-        std::thread::Builder::new()
-            .stack_size(STACK_SIZE)
-            .spawn(move || bme680::run(sensor, &METRICS))
-            .context("spawning BME680 driver thread failed")
-    });
-    if let Err(error) = bme680_started {
-        log::error!("failed to start BME680: {error}");
-    } else {
-        // has_sensors = true;
-    }
-
-    // if !has_sensors {
-    //     log::error!("/!\\ EXTREMELY TRAGIC ERROR ... NO SENSORS BROUGHT UP SUCCESSFULLY!")
-    // }
-
-    loop {
-        if let Ok(creds) = server.wifi_credentials.recv() {
-            log::info!("received WiFi credentials: {creds:?}");
-            match wifi.connect_to(&sysloop, creds) {
-                Ok(_) => log::info!("connected to WiFi access point"),
-                Err(e) => log::error!("failed to connect to WiFi access point: {e}"),
-            }
-        }
-    }
-
+    let exec: task::executor::EspExecutor<8, edge_executor::Local> =
+        task::executor::EspExecutor::new();
+    let mut tasks = heapless::Vec::new();
+    exec.spawn_local_collect(wifi.run(sysloop.clone(), neopixel), &mut tasks)
+        .context("failed to spawn wifi bg task")?;
+    exec.spawn_local_collect(scd30::run(scd30?, &METRICS), &mut tasks)
+        .context("failed to spawn SCD30 task")?;
+    exec.spawn_local_collect(bme680::run(bme680?, &METRICS), &mut tasks)
+        .context("failed to spawn BME680 task")?;
+    exec.run_tasks(|| true, &mut tasks);
     Ok(())
 }

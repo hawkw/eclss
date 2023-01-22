@@ -8,10 +8,8 @@ use embedded_svc::{
     io::{Read, Write},
 };
 use esp_idf_svc::http::server::{Configuration, EspHttpServer};
-use std::sync::mpsc;
 
 pub struct Server {
-    pub wifi_credentials: mpsc::Receiver<net::Credentials>,
     server: EspHttpServer,
 }
 
@@ -19,7 +17,7 @@ pub const HTTP_PORT: u16 = 80;
 pub const HTTPS_PORT: u16 = 443;
 
 pub fn start_server(
-    access_points: net::AccessPoints,
+    wifi: &net::EclssWifi,
     metrics: &'static SensorMetrics,
 ) -> anyhow::Result<Server> {
     let mut server = EspHttpServer::new(&Configuration {
@@ -28,7 +26,8 @@ pub fn start_server(
         ..Default::default()
     })
     .context("failed to start HTTP server")?;
-    let (tx, rx) = mpsc::sync_channel(1);
+    let access_points = wifi.access_points.clone();
+    let creds_tx = wifi.credentials_tx();
     server
         .fn_handler("/", Method::Get, move |req| {
             let mut ssids = String::new();
@@ -49,7 +48,9 @@ pub fn start_server(
             let credentials = serde_urlencoded::from_bytes(&body)?;
             let content = r#"<!DOCTYPE html><html><body>Submitted!</body></html>"#;
             req.into_ok_response()?.write_all(content.as_bytes())?;
-            tx.send(credentials).context("sending wifi credentials")?;
+            creds_tx
+                .try_send(credentials)
+                .context("sending wifi credentials")?;
             Ok(())
         })
         .context("adding POST /wifi-select handler")?
@@ -72,10 +73,7 @@ pub fn start_server(
 
     log::info!("Server is running on http://192.168.71.1/");
 
-    Ok(Server {
-        wifi_credentials: rx,
-        server,
-    })
+    Ok(Server { server })
 }
 
 fn get_sensors<C: Connection>(req: Request<C>, sensors: &'static SensorMetrics) -> HandlerResult {
