@@ -68,5 +68,6 @@ esp_idf_components = [
     # not actually using the websocket client, but esp-idf-svc appears to not
     # build without it...
     "esp_websocket_client",
+    "espcoredump",
     "mdns",
 ]
