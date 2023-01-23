@@ -5,6 +5,7 @@ use esp_idf_svc::systime::EspSystemTime;
 pub struct Gauge<'a, S> {
     pub name: &'a str,
     pub help: &'a str,
+    pub unit: Option<&'a str>,
     pub sensors: S,
 }
 
@@ -31,9 +32,15 @@ impl<'a, S> Gauge<'a, S> {
             sensors,
             name,
             help,
+            unit,
         } = self;
 
-        writeln!(writer, "# HELP {name} {help}\n# TYPE {name} gauge")?;
+        writeln!(writer, "# TYPE {name} gauge\n# HELP {name} {help}")?;
+
+        if let Some(unit) = unit {
+            writeln!(writer, "# UNIT {name} {unit}")?;
+        }
+
         for sensor in sensors {
             let value = sensor.value();
             let time = sensor.timestamp.load(Ordering::Acquire);

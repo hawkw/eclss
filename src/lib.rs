@@ -36,28 +36,33 @@ impl SensorMetrics {
     pub const fn new() -> Self {
         Self {
             temp: metric::Gauge {
-                name: "temperature_degrees_c",
+                name: "temperature_degrees_celcius",
                 help: "Temperature in degrees Celcius.",
+                unit: Some("celcius"),
                 sensors: BothTemps::new(),
             },
             co2: metric::Gauge {
                 name: "co2_ppm",
                 help: "CO2 in parts per million.",
+                unit: Some("ppm"),
                 sensors: metric::SensorGauge::new(SCD30),
             },
             humidity: metric::Gauge {
                 name: "humidity_percent",
                 help: "Relative humidity (RH) percentage.",
+                unit: Some("percent"),
                 sensors: BothTemps::new(),
             },
             pressure: metric::Gauge {
                 name: "pressure_hpa",
                 help: "Barometric pressure, in hectopascals (hPa).",
+                unit: Some("hpa"),
                 sensors: metric::SensorGauge::new(BME680),
             },
             gas_resistance: metric::Gauge {
                 name: "gas_resistance_ohms",
                 help: "BME680 VOC sensor resistance, in Ohms.",
+                unit: Some("ohms"),
                 sensors: metric::SensorGauge::new(BME680),
             },
         }
