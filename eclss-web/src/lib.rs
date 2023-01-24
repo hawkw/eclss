@@ -58,23 +58,16 @@ pub fn app(props: &AppProps) -> Html {
 fn render(route: &Routes) -> Html {
     html! {
         <Frame
-            app_title="Environmental Controls and Life Support Systems"
+            app_title="ECLSS"
             app_url="https://github.com/hawkw/eclss-idf">
             <Nav>
-                // <Role role={RoleDto::User}>
-                //     <RouteNavItem text="Home" route={Routes::Home}/>
-                // </Role>
-                <Role role={RoleDto::Admin}>
-                    <RouteNavItem<Routes> text="Home" icon="fa-solid fa-droplet" route={Routes::Home}/>
-                    <WifiNavItem<Routes> route={Routes::Wifi}/>
-                </Role>
+                <RouteNavItem<Routes> text="Home" icon="fa-solid fa-droplet" route={Routes::Home}/>
+                <WifiNavItem<Routes> route={Routes::Wifi}/>
             </Nav>
-            // <Status>
-            //     <Role role={RoleDto::User}>
-            //         <WifiStatusItem<Routes> route={Routes::Wifi}/>
-            //         <RoleLogoutStatusItem<Routes> auth_status_route={Routes::AuthState}/>
-            //     </Role>
-            // </Status>
+            <Status>
+                <WifiStatusItem<Routes> route={Routes::Wifi}/>
+                // <RoleLogoutStatusItem<Routes> auth_status_route={Routes::AuthState}/>
+            </Status>
             <Content>
                 {
                     match route {
@@ -88,9 +81,7 @@ fn render(route: &Routes) -> Html {
                         //     <RoleAuthState<Routes> home={Some(Routes::Home)}/>
                         // },
                         Routes::Wifi => html! {
-                            <Role role={RoleDto::Admin} auth=true>
                                 <Wifi/>
-                            </Role>
                         },
                     }
                 }
