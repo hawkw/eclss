@@ -46,20 +46,20 @@ esp_idf_version = "branch:release/v4.4"
 # pick and choose which ESP-IDF components are included, to try and reduce flash
 # size.
 # NOTE: if changing these, changes are not reflected unless  you do a `cargo clean`.
-# esp_idf_components = [
-#     # "esp32c3",
-#     # "esp_common",
-#     "esp_http_client",
-#     "esp_http_server",
-#     "esp_https_server",
-#     "esp_wifi",
-#     "log",
-#     "hal",
-#     "nvs_flash",
-#     # "pthread",
-#     # not actually using the websocket client, but esp-idf-svc appears to not
-#     # build without it...
-#     "esp_websocket_client",
-#     "espcoredump",
-#     "mdns",
-# ]
+esp_idf_components = [
+    # "esp32c3",
+    # "esp_common",
+    "esp_http_client",
+    "esp_http_server",
+    "esp_https_server",
+    "esp_wifi",
+    "log",
+    "hal",
+    "nvs_flash",
+    # "pthread",
+    # not actually using the websocket client, but esp-idf-svc appears to not
+    # build without it...
+    "esp_websocket_client",
+    "espcoredump",
+    "mdns",
+]

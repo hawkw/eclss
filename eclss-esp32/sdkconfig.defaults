@@ -8,11 +8,6 @@ CONFIG_LWIP_L2_TO_L3_COPY=y
 CONFIG_LWIP_IP_FORWARD=y
 CONFIG_LWIP_IPV4_NAPT=y
 
-# SPI Ethernet demo
-CONFIG_ETH_SPI_ETHERNET_DM9051=y
-CONFIG_ETH_SPI_ETHERNET_W5500=y
-CONFIG_ETH_SPI_ETHERNET_KSZ8851SNL=y
-
 # Use this to set FreeRTOS kernel tick frequency to 1000 Hz (100 Hz by default).
 # This allows to use 1 ms granuality for thread sleeps (10 ms by default).
 #CONFIG_FREERTOS_HZ=1000

@@ -58,8 +58,8 @@ pub fn app(props: &AppProps) -> Html {
 fn render(route: &Routes) -> Html {
     html! {
         <Frame
-            app_title="RUWM"
-            app_url="https://github.com/ivmarkov/ruwm">
+            app_title="Environmental Controls and Life Support Systems"
+            app_url="https://github.com/hawkw/eclss-idf">
             <Nav>
                 // <Role role={RoleDto::User}>
                 //     <RouteNavItem text="Home" route={Routes::Home}/>

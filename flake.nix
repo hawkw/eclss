@@ -15,7 +15,7 @@
   };
 
   description = "flake for ESP32-C3 Rust development";
-c
+
   outputs = { self, flake-compat, nixpkgs, flake-utils, nixpkgs-esp-dev, ... }:
     flake-utils.lib.eachDefaultSystem (system:
       let
@@ -29,7 +29,7 @@ c
               trunk
               wasm-bindgen-cli
               binaryen
-              # dart-sass 
+              # dart-sass
             ];
             esp32Pkgs = with pkgs; [
               # rust ESP tools
@@ -39,12 +39,19 @@ c
               cmake
               ninja
               python311
-              python3Packages.pip
-              python3Packages.virtualenv
+              # python3Packages.pip
+              # python3Packages.virtualenv
               (gcc-riscv32-esp32c3-elf-bin.override {
                 version = "2021r2-patch5";
                 hash = "sha256-99c+X54t8+psqOLJXWym0j1rOP0QHqXTAS88s81Z858=";
               })
+            ];
+            pythonPkgs = with pkgs.python3Packages; [
+              pip
+              virtualenv
+              python-socketio
+              jinja2
+              itsdangerous
             ];
           in with pkgs;
           [
@@ -54,7 +61,7 @@ c
             cargo-generate
             # just
             just
-          ] ++ webPkgs ++ esp32Pkgs;
+          ] ++ webPkgs ++ esp32Pkgs ++ pythonPkgs;
           LD_LIBRARY_PATH = "${pkgs.lib.makeLibraryPath buildInputs}";
         };
       });
