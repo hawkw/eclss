@@ -1,7 +1,10 @@
 use crate::{net, SensorMetrics};
 use anyhow::Context;
 use embedded_svc::{
-    http::Method,
+    http::{
+        server::{Connection, HandlerResult, Request},
+        Headers, Method,
+    },
     io::{Read, Write},
 };
 use esp_idf_svc::http::server::{Configuration, EspHttpServer};
@@ -55,13 +58,17 @@ pub fn start_server(
             let mut rsp = req.into_response(
                 200,
                 Some("OK"),
-                &[("content-type", "text/plain; version=0.0.4")],
+                &[(header::CONTENT_TYPE, "text/plain; version=0.0.4")],
             )?;
             metrics.render_prometheus(&mut rsp)?;
 
             Ok(())
         })
-        .context("adding GET /metrics handler")?;
+        .context("adding GET /metrics handler")?
+        .fn_handler("/sensors.json", Method::Get, move |req| {
+            get_sensors(req, metrics)
+        })
+        .context("adding GET /sensors.json handler")?;
 
     log::info!("Server is running on http://192.168.71.1/");
 
@@ -69,6 +76,28 @@ pub fn start_server(
         wifi_credentials: rx,
         server,
     })
+}
+
+fn get_sensors<C: Connection>(req: Request<C>, sensors: &'static SensorMetrics) -> HandlerResult {
+    const JSON: &str = "application/json";
+
+    // XXX(eliza): this is technically more correct but i wanna be able to open
+    // it in the browser...
+    /*
+    if let Some(accept) = req.header("accept") {
+        if !accept.contains(JSON) {
+            req.into_status_response(406)? // not acceptable
+                .write_all(JSON.as_bytes())?;
+            return Ok(());
+        }
+    }
+    */
+
+    let mut rsp = req.into_response(200, Some("OK"), &[(header::CONTENT_TYPE, JSON)])?;
+    // TODO(eliza): don't allocate here...
+    let json = serde_json::to_string_pretty(&sensors)?;
+    rsp.write_all(json.as_bytes())?;
+    Ok(())
 }
 
 fn read_body<R: Read>(response: &mut R, buf: &mut Vec<u8>) -> anyhow::Result<usize> {
@@ -89,4 +118,8 @@ fn read_body<R: Read>(response: &mut R, buf: &mut Vec<u8>) -> anyhow::Result<usi
     buf.truncate(total_bytes_read);
 
     Ok(total_bytes_read)
+}
+
+mod header {
+    pub(super) const CONTENT_TYPE: &str = "content-type";
 }

@@ -23,7 +23,7 @@ pub struct SensorMetrics {
     pub gas_resistance: metric::Gauge<'static, metric::SensorGauge<'static>>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, serde::Serialize)]
 pub struct BothTemps {
     pub bme680: metric::SensorGauge<'static>,
     pub scd30: metric::SensorGauge<'static>,
@@ -79,6 +79,22 @@ impl SensorMetrics {
         Ok(())
     }
 }
+
+impl serde::Serialize for SensorMetrics {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        use serde::ser::SerializeStruct;
+
+        let mut state = serializer.serialize_struct("SensorMetrics", 5)?;
+        state.serialize_field("temp", &self.temp.sensors)?;
+        state.serialize_field("co2", &self.co2.sensors)?;
+        state.serialize_field("humidity", &self.humidity.sensors)?;
+        state.serialize_field("pressure", &self.pressure.sensors)?;
+        state.serialize_field("gas_resistance", &self.gas_resistance.sensors)?;
+        state.end()
+    }
+}
+
+// === impl BothTemps ===
 
 impl BothTemps {
     pub const fn new() -> Self {

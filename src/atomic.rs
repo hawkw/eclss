@@ -38,7 +38,13 @@ impl AtomicF32 {
 impl fmt::Debug for AtomicF32 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("AtomicF32")
-            .field(&self.load(Ordering::Acquire))
+            .field(&self.load(Ordering::Relaxed))
             .finish()
+    }
+}
+
+impl serde::Serialize for AtomicF32 {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_f32(self.load(Ordering::Relaxed))
     }
 }
