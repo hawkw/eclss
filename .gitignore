@@ -1,5 +1,6 @@
 /.vscode
 /.embuild
-/target
+**/target
 /Cargo.lock
 /.direnv
+**/dist

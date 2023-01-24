@@ -1,5 +1,6 @@
 use crate::{net, SensorMetrics};
 use anyhow::Context;
+use edge_frame::assets::{self, serve::AssetMetadata};
 use embedded_svc::{
     http::{
         server::{Connection, HandlerResult, Request},
@@ -18,6 +19,8 @@ pub struct Server {
 pub const HTTP_PORT: u16 = 80;
 pub const HTTPS_PORT: u16 = 443;
 
+const ASSETS: assets::serve::Assets = edge_frame::assets!("ECLSS_WEB");
+
 pub fn start_server(
     access_points: net::AccessPoints,
     metrics: &'static SensorMetrics,
@@ -30,18 +33,6 @@ pub fn start_server(
     .context("failed to start HTTP server")?;
     let (tx, rx) = mpsc::sync_channel(1);
     server
-        .fn_handler("/", Method::Get, move |req| {
-            let mut ssids = String::new();
-            for ap in access_points.read().unwrap().iter() {
-                use std::fmt::Write;
-                write!(&mut ssids, "<option>{ssid}</option>", ssid = ap.ssid)?;
-            }
-            let rsp = format!(include_str!("./http/index.html"), ssids);
-            req.into_ok_response()?.write_all(rsp.as_bytes())?;
-
-            Ok(())
-        })
-        .context("adding GET / handler")?
         .fn_handler("/wifi-select", Method::Post, move |mut req| {
             let mut body = vec![0; 40];
             read_body(&mut req, &mut body)?;
@@ -69,6 +60,24 @@ pub fn start_server(
             get_sensors(req, metrics)
         })
         .context("adding GET /sensors.json handler")?;
+    let mut assets = ASSETS
+        .iter()
+        .filter(|asset| !asset.0.is_empty())
+        .collect::<heapless::Vec<_, { assets::MAX_ASSETS }>>();
+
+    assets.sort_by_key(|asset| AssetMetadata::derive(asset.0).uri);
+
+    for asset in assets.iter().rev() {
+        let asset = **asset;
+
+        let metadata = AssetMetadata::derive(asset.0);
+
+        server
+            .fn_handler(metadata.uri, Method::Get, move |req| {
+                assets::serve::serve(req, asset)
+            })
+            .with_context(|| format!("adding handler for {}", metadata.uri))?;
+    }
 
     log::info!("Server is running on http://192.168.71.1/");
 

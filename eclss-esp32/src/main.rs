@@ -1,7 +1,7 @@
 // If using the `binstart` feature of `esp-idf-sys`, always keep this module
 // imported
 use anyhow::Context;
-use eclss::{bme680, http, net, scd30, ws2812};
+use eclss_esp32::{bme680, http, net, scd30, ws2812, SensorMetrics};
 use esp_idf_hal::{
     i2c::{I2cConfig, I2cDriver},
     peripherals::Peripherals,
@@ -13,7 +13,7 @@ use esp_idf_svc::{
 };
 use esp_idf_sys as _;
 
-static METRICS: eclss::SensorMetrics = eclss::SensorMetrics::new();
+static METRICS: SensorMetrics = SensorMetrics::new();
 
 // apparently Rust tasks need more stack size than the default on ESP32C3
 const STACK_SIZE: usize = 7000;

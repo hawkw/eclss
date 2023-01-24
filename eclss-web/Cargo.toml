@@ -1,0 +1,31 @@
+cargo-features = ["per-package-target"]
+
+[package]
+name = "eclss-web"
+version = "0.1.0"
+authors = ["Eliza Weisman <eliza@buoyant.io>"]
+edition = "2021"
+resolver = "2"
+default-target = "wasm32-unknown-unknown"
+
+[features]
+default = ["middleware-ws"]
+middleware-ws = ["edge-frame/middleware-ws"]
+middleware-local = ["edge-frame/middleware-local", "embassy-sync"]
+
+[dependencies]
+anyhow = "1"
+log = "0.4"
+futures = "0.3"
+derive_more = "0.99"
+wasm-logger = "0.2"
+web-sys = { version = "0.3", features = ["console"] }
+yew = { version = "0.19", default-features = false }
+yew-router = { version = "0.16" }
+yewdux = "0.8.3"
+yewdux-middleware = { version = "0.1" }
+strum = { version = "0.23" }
+serde = "1"
+embedded-svc = { version = "0.24", default-features = false, features = ["std"] }
+edge-frame = { version = "0.5", default-features = false }
+embassy-sync = { version = "0.1", default-features = false, features = ["std"], optional = true }

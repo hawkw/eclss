@@ -28,7 +28,6 @@ runner = "espflash --monitor"
 rustflags = ["-C", "default-linker-libraries", "--cfg", "esp_idf_log_colors"]
 
 [unstable]
-
 build-std = ["std", "panic_abort"]
 #build-std-features = ["panic_immediate_abort"] # Required for older ESP-IDF versions without a realpath implementation
 
