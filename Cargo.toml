@@ -32,6 +32,7 @@ log = { version = "0.4", features = ["max_level_info"] }
 sensor-scd30 = { version = "0.4.0", default-features = false }
 serde = { version = "1", default-features = false, features = ["derive"] }
 serde_urlencoded = "0.7.1"
+serde_json = "1"
 shared-bus = { version = "0.2.0", features = ["std"] }
 bosch-bme680 = "0.1.0"
 

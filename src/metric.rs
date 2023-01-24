@@ -1,6 +1,7 @@
 use crate::atomic::{AtomicF32, AtomicU64, Ordering};
 use embedded_svc::io;
 use esp_idf_svc::systime::EspSystemTime;
+
 #[derive(Debug)]
 pub struct Gauge<'a, S> {
     pub name: &'a str,
@@ -9,11 +10,11 @@ pub struct Gauge<'a, S> {
     pub sensors: S,
 }
 
-#[derive(Debug)]
+#[derive(Debug, serde::Serialize)]
 pub struct SensorGauge<'a> {
     value: AtomicF32,
     timestamp: AtomicU64,
-    name: &'a str,
+    sensor: &'a str,
 }
 
 impl<'a, S> Gauge<'a, S> {
@@ -44,7 +45,7 @@ impl<'a, S> Gauge<'a, S> {
         for sensor in sensors {
             let value = sensor.value();
             let time = sensor.timestamp.load(Ordering::Acquire);
-            let sensor_name = sensor.name;
+            let sensor_name = sensor.sensor;
 
             writeln!(writer, "{name}{{sensor=\"{sensor_name}\"}} {value} {time}")?;
         }
@@ -61,7 +62,7 @@ impl<'a> SensorGauge<'a> {
         Self {
             value: AtomicF32::zero(),
             timestamp: AtomicU64::new(0),
-            name,
+            sensor: name,
         }
     }
 
