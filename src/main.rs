@@ -1,7 +1,8 @@
 // If using the `binstart` feature of `esp-idf-sys`, always keep this module
 // imported
 use anyhow::Context;
-use eclss::{bme680, http, net, scd30, ws2812};
+use eclss::{bme680::Bme680, http, net, scd30::Scd30, sensor, ws2812};
+use embassy_time::Duration;
 use esp_idf_hal::{
     i2c::{I2cConfig, I2cDriver},
     peripherals::Peripherals,
@@ -62,17 +63,21 @@ fn main() -> anyhow::Result<()> {
 
     // bring up sensors
     // TODO(eliza): use the sensors to calibrate each other...
-    let scd30 = scd30::bringup(&bus).context("bringing up SCD30 failed");
-    let bme680 = bme680::bringup(&bus).context("bringing up BME680 failed");
+    let sensor_mangler = sensor::Manager {
+        metrics: &METRICS,
+        busman: bus,
+        poll_interval: Duration::from_secs(2),
+        retry_backoff: Duration::from_secs(1),
+    };
 
     let exec: task::executor::EspExecutor<8, edge_executor::Local> =
         task::executor::EspExecutor::new();
     let mut tasks = heapless::Vec::new();
     exec.spawn_local_collect(wifi.run(sysloop.clone(), neopixel), &mut tasks)
         .context("failed to spawn wifi bg task")?;
-    exec.spawn_local_collect(scd30::run(scd30?, &METRICS), &mut tasks)
+    exec.spawn_local_collect(sensor_mangler.run::<Scd30>(), &mut tasks)
         .context("failed to spawn SCD30 task")?;
-    exec.spawn_local_collect(bme680::run(bme680?, &METRICS), &mut tasks)
+    exec.spawn_local_collect(sensor_mangler.run::<Bme680>(), &mut tasks)
         .context("failed to spawn BME680 task")?;
     exec.run_tasks(|| true, &mut tasks);
     Ok(())
