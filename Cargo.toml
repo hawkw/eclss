@@ -1,9 +1,9 @@
 # cargo-features = ["per-package-target"]
 
 [workspace]
-
 resolver = "2"
-members = ["eclss-esp32"]
+members = ["eclss", "eclss-esp32"]
+# exclude web from the workspace because it's built with a different target
 exclude = ["eclss-web"]
 
 [profile.release]

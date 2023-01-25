@@ -59,7 +59,9 @@
             rustup
             rust-analyzer
             cargo-generate
-            # just
+            # trunk --- used for building the wasm webapp
+            trunk
+            # just --- command runner
             just
           ] ++ webPkgs ++ esp32Pkgs ++ pythonPkgs;
           LD_LIBRARY_PATH = "${pkgs.lib.makeLibraryPath buildInputs}";

@@ -2,10 +2,9 @@ use core::fmt::Debug;
 
 use std::rc::Rc;
 
+use eclss::dto::{WebEvent, WebRequest};
 use edge_frame::middleware;
 use log::Level;
-// use ruwm::dto::web::WebEvent;
-// use ruwm::dto::web::WebRequest;
 use yew::prelude::*;
 use yew_router::prelude::*;
 use yewdux_middleware::*;
@@ -25,6 +24,8 @@ compile_error!("One of the features `middleware-ws` or `middleware-local` must b
 enum Routes {
     #[at("/wifi")]
     Wifi,
+    #[at("/authstate")]
+    AuthState,
     #[at("/")]
     Home,
 }
@@ -59,27 +60,31 @@ fn render(route: &Routes) -> Html {
     html! {
         <Frame
             app_title="ECLSS"
-            app_url="https://github.com/hawkw/eclss-idf">
+            app_url="https://github.com/hawkw/eclss-idf"
+        >
             <Nav>
-                <RouteNavItem<Routes> text="Home" icon="fa-solid fa-droplet" route={Routes::Home}/>
-                <WifiNavItem<Routes> route={Routes::Wifi}/>
+                <Role role={RoleDto::Admin}>
+                    <RouteNavItem<Routes> text="Home" route={Routes::Home}/>
+                    <WifiNavItem<Routes> route={Routes::Wifi}/>
+                </Role>
             </Nav>
             <Status>
-                <WifiStatusItem<Routes> route={Routes::Wifi}/>
-                // <RoleLogoutStatusItem<Routes> auth_status_route={Routes::AuthState}/>
+                <Role role={RoleDto::User}>
+                    <WifiStatusItem<Routes> route={Routes::Wifi}/>
+                    <RoleLogoutStatusItem<Routes> auth_status_route={Routes::AuthState}/>
+                </Role>
             </Status>
             <Content>
                 {
                     match route {
                         Routes::Home => html! {
-                            // <Role role={RoleDto::User} auth=true>
-                            //     <Valve/>
-                            //     <Battery/>
-                            // </Role>
+                            <Role role={RoleDto::User} auth=true>
+                            //     <Sensors/>
+                            </Role>
                         },
-                        // Routes::AuthState => html! {
-                        //     <RoleAuthState<Routes> home={Some(Routes::Home)}/>
-                        // },
+                        Routes::AuthState => html! {
+                            <RoleAuthState<Routes> home={Some(Routes::Home)}/>
+                        },
                         Routes::Wifi => html! {
                                 <Wifi/>
                         },
@@ -98,25 +103,26 @@ fn init_middleware(_endpoint: String) {
     #[cfg(feature = "middleware-local")]
     let (sender, receiver) = (comm::REQUEST_QUEUE.sender(), comm::EVENT_QUEUE.receiver());
 
-    // // Dispatch WebRequest messages => send to backend
-    // dispatch::register(middleware::send::<WebRequest>(sender));
+    // Dispatch WebRequest messages => send to backend
+    dispatch::register(middleware::send::<WebRequest>(sender));
 
-    // // Dispatch WebEvent messages => redispatch as BatteryMsg, ValveMsg, RoleState or WifiConf messages
-    // dispatch::register::<WebEvent, _>(|event| {
-    //     match event {
-    //         WebEvent::NoPermissions => unreachable!(),
-    //         WebEvent::AuthenticationFailed => {
-    //             dispatch::invoke(RoleState::AuthenticationFailed(Credentials {
-    //                 username: "".into(),
-    //                 password: "".into(),
-    //             }))
-    //         } // TODO
-    //         WebEvent::RoleState(role) => dispatch::invoke(RoleState::Role(role)),
-    //         // WebEvent::ValveState(valve) => dispatch::invoke(ValveMsg(valve)),
-    //         // WebEvent::BatteryState(battery) => dispatch::invoke(BatteryMsg(battery)),
-    //         WebEvent::WaterMeterState(_) => (), // TODO
-    //     }
-    // });
+    // Dispatch WebEvent messages => redispatch as BatteryMsg, ValveMsg, RoleState or WifiConf messages
+    dispatch::register::<WebEvent, _>(|event| {
+        match event {
+            WebEvent::NoPermissions => unreachable!(),
+            WebEvent::AuthenticationFailed => {
+                dispatch::invoke(RoleState::AuthenticationFailed(Credentials {
+                    username: "".into(),
+                    password: "".into(),
+                }))
+            } // TODO
+            WebEvent::RoleState(role) => dispatch::invoke(RoleState::Role(role)),
+            // WebEvent::ValveState(valve) => dispatch::invoke(ValveMsg(valve)),
+            // WebEvent::BatteryState(battery) => dispatch::invoke(BatteryMsg(battery)),
+            WebEvent::SensorState(_) => (), // TODO
+            WebEvent::WifiState(_) => (),   // TODO
+        }
+    });
 
     dispatch::register(log::<RoleStore, RoleState>(
         dispatch::store.fuse(role_as_request),
@@ -126,7 +132,7 @@ fn init_middleware(_endpoint: String) {
     // dispatch::register(log::<ValveStore, ValveMsg>(dispatch::store));
 
     // Receive from backend => dispatch WebEvent messages
-    // middleware::receive::<WebEvent>(receiver);
+    middleware::receive::<WebEvent>(receiver);
 }
 
 fn log<S, M>(dispatch: impl MiddlewareDispatch<M> + Clone) -> impl MiddlewareDispatch<M>
@@ -140,38 +146,38 @@ where
 }
 
 fn role_as_request(msg: RoleState, dispatch: impl MiddlewareDispatch<RoleState>) {
-    // let request = match &msg {
-    //     RoleState::Authenticating(credentials) => Some(WebRequest::Authenticate(
-    //         credentials.username.as_str().into(),
-    //         credentials.password.as_str().into(),
-    //     )),
-    //     RoleState::LoggingOut(_) => Some(WebRequest::Logout),
-    //     _ => None,
-    // };
+    let request = match &msg {
+        RoleState::Authenticating(credentials) => Some(WebRequest::Authenticate(
+            credentials.username.as_str().into(),
+            credentials.password.as_str().into(),
+        )),
+        RoleState::LoggingOut(_) => Some(WebRequest::Logout),
+        _ => None,
+    };
 
-    // if let Some(request) = request {
-    //     dispatch::invoke(request);
-    // }
+    if let Some(request) = request {
+        dispatch::invoke(request);
+    }
 
     dispatch.invoke(msg);
 }
 
-// #[cfg(feature = "middleware-local")]
-// pub mod comm {
-//     use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex, channel};
+#[cfg(feature = "middleware-local")]
+pub mod comm {
+    use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex, channel};
 
-//     // use ruwm::dto::web::*;
+    use eclss::dto::{WebEvent, WebRequest};
 
-//     pub(crate) static REQUEST_QUEUE: channel::Channel<CriticalSectionRawMutex, WebRequest, 1> =
-//         channel::Channel::new();
-//     pub(crate) static EVENT_QUEUE: channel::Channel<CriticalSectionRawMutex, WebEvent, 1> =
-//         channel::Channel::new();
+    pub(crate) static REQUEST_QUEUE: channel::Channel<CriticalSectionRawMutex, WebRequest, 1> =
+        channel::Channel::new();
+    pub(crate) static EVENT_QUEUE: channel::Channel<CriticalSectionRawMutex, WebEvent, 1> =
+        channel::Channel::new();
 
-//     pub fn sender() -> channel::DynamicSender<'static, WebEvent> {
-//         EVENT_QUEUE.sender().into()
-//     }
+    pub fn sender() -> channel::DynamicSender<'static, WebEvent> {
+        EVENT_QUEUE.sender().into()
+    }
 
-//     pub fn receiver() -> channel::DynamicReceiver<'static, WebRequest> {
-//         REQUEST_QUEUE.receiver().into()
-//     }
-// }
+    pub fn receiver() -> channel::DynamicReceiver<'static, WebRequest> {
+        REQUEST_QUEUE.receiver().into()
+    }
+}

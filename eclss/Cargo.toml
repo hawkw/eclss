@@ -1,0 +1,11 @@
+[package]
+name = "eclss"
+version = "0.1.0"
+authors = ["Eliza Weisman <eliza@buoyant.io>"]
+edition = "2021"
+
+[dependencies]
+anyhow = { version = "1", default-features = false }
+edge-frame = { version = "0.5", default-features = false, features = ["dto"] }
+embedded-svc = { version = "0.24", features = ["alloc"] }
+serde = { version = "1", default-features = false, features = ["derive"] }

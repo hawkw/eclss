@@ -202,11 +202,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "eclss"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "edge-frame",
+ "embedded-svc",
+ "serde",
+]
+
+[[package]]
 name = "eclss-web"
 version = "0.1.0"
 dependencies = [
  "anyhow",
  "derive_more",
+ "eclss",
  "edge-frame",
  "embassy-sync",
  "embedded-svc",
@@ -286,6 +297,7 @@ dependencies = [
  "enumset",
  "futures",
  "heapless",
+ "log",
  "no-std-net",
  "num_enum",
  "serde",

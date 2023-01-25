@@ -29,3 +29,4 @@ serde = "1"
 embedded-svc = { version = "0.24", default-features = false, features = ["std"] }
 edge-frame = { version = "0.5", default-features = false }
 embassy-sync = { version = "0.1", default-features = false, features = ["std"], optional = true }
+eclss = { path = "../eclss" }
