@@ -7,6 +7,7 @@ use esp_idf_hal::{
     i2c::{I2cConfig, I2cDriver},
     peripherals::Peripherals,
     prelude::*,
+    reset::WakeupReason,
     task,
 };
 use esp_idf_svc::{
@@ -16,6 +17,10 @@ use esp_idf_svc::{
 use esp_idf_sys as _;
 
 static METRICS: eclss::SensorMetrics = eclss::SensorMetrics::new();
+
+// Make sure that the firmware will contain
+// up-to-date build time and package info coming from the binary crate
+esp_idf_sys::esp_app_desc!();
 
 fn main() -> anyhow::Result<()> {
     // It is necessary to call this function once. Otherwise, some patches to the
@@ -32,6 +37,8 @@ fn main() -> anyhow::Result<()> {
     // logger.set_target_level("", log::LevelFilter::Info);
     // logger.initialize();
 
+    let wakeup = WakeupReason::get();
+    log::info!("Wakeup reason: {wakeup:?}");
     log::info!("ECLSS is go!");
 
     let peripherals = Peripherals::take().unwrap();
