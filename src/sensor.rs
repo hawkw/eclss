@@ -8,6 +8,13 @@ pub trait Sensor: Sized {
     fn incr_error(metrics: &SensorMetrics);
 }
 
+/// A sensor mangler for pollable I2C [`Sensor`]s.
+///
+/// A sensor manager handles sensor bringup, polls the sensor at the provided
+/// `poll_interval`, and backs off when the sensor is unavailable. This allows a
+/// limited form of hot-plugability for I2C sensors: although the kinds of
+/// sensors that may be on the bus must be known in advance, they can be
+/// disconnected after the device starts without requiring a complete reset.
 #[derive(Copy, Clone)]
 pub struct Manager {
     pub metrics: &'static SensorMetrics,
