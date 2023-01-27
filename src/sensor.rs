@@ -1,4 +1,4 @@
-use crate::{I2cBus, SensorMetrics};
+use crate::{retry::ExpBackoff, I2cBus, SensorMetrics};
 use embassy_time::{Duration, Timer};
 
 pub trait Sensor: Sized {
@@ -17,19 +17,18 @@ pub struct Manager {
 }
 
 impl Manager {
-    const MAX_BACKOFF: Duration = Duration::from_secs(60);
-
     pub async fn run<S: Sensor>(self) -> anyhow::Result<()> {
         let mut sensor = {
-            let mut backoff = self.retry_backoff;
+            let mut backoff = ExpBackoff::new(self.retry_backoff).with_target(S::NAME);
             loop {
                 match S::bringup(self.busman) {
                     Ok(sensor) => {
-                        log::info!("successfully brought up {}!", S::NAME);
+                        log::info!(target: S::NAME, "successfully brought up {}!", S::NAME);
                         break sensor;
                     }
                     Err(error) => {
                         log::warn!(
+                            target: S::NAME,
                             "failed to bring up {}: {error:?}; retrying in {backoff:?}...",
                             S::NAME
                         );
@@ -37,16 +36,13 @@ impl Manager {
                     }
                 }
 
-                Timer::after(backoff).await;
-                if backoff < Self::MAX_BACKOFF {
-                    backoff *= 2;
-                }
+                backoff.wait().await;
             }
         };
 
         loop {
             if let Err(error) = sensor.poll(self.metrics) {
-                log::warn!("error polling {}: {error:?}", S::NAME);
+                log::warn!(target: S::NAME, "error polling {}: {error:?}", S::NAME);
                 S::incr_error(self.metrics);
             }
             Timer::after(self.poll_interval).await;

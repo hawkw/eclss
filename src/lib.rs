@@ -4,7 +4,7 @@ pub mod bme680;
 pub mod http;
 pub mod metric;
 pub mod net;
-mod retry;
+pub mod retry;
 pub mod scd30;
 pub mod sensor;
 pub mod ws2812;

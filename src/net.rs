@@ -1,5 +1,6 @@
 use anyhow::Context;
 use channel_bridge::asynch::pubsub;
+use embassy_time::Duration;
 use embedded_svc::{
     utils::asyncify::Asyncify,
     wifi::{AccessPointConfiguration, AccessPointInfo, ClientConfiguration, Configuration, Wifi},
@@ -12,12 +13,12 @@ use esp_idf_svc::{
     nvs::EspDefaultNvsPartition,
     wifi::{EspWifi, WifiEvent},
 };
-use futures::FutureExt;
+use futures::{future, FutureExt};
 use thingbuf::mpsc;
 
 use std::sync::{Arc, RwLock};
 
-use crate::ws2812;
+use crate::{retry, ws2812};
 
 pub struct EclssWifi {
     wifi: Box<EspWifi<'static>>,
@@ -44,6 +45,8 @@ enum WifiState {
     Connecting,
     /// Connected to an access point; IP assigned.
     Connected,
+    /// Disconnected from an access point; trying to reconnect.
+    Disconnected,
     /// Some kind of error.
     Error,
 }
@@ -132,6 +135,12 @@ impl EclssWifi {
                 .context("failed to subscribe to IP events")?,
         );
 
+        // exponential backoff for reconnecting, starting at 500 milliseconds.
+        let mut backoff =
+            retry::ExpBackoff::new(Duration::from_millis(500)).with_target("eclss::net");
+        let mut current_backoff = future::Either::Left(future::pending());
+        let mut has_ap_client = false;
+
         loop {
             // set the board's neopixel to indicate the current wifi state.
             if let Err(error) = self.state.set_neopixel_status(&mut npx) {
@@ -143,24 +152,41 @@ impl EclssWifi {
             match self.state {
                 WifiState::Error => {
                     log::info!("WiFi in error state; setting AP mode");
-                    self.wifi
-                        .set_configuration(&Configuration::AccessPoint(Self::access_point_config()))
-                        .context("failed to set WiFi configuration")?;
+                    self.configure(Configuration::AccessPoint(Self::access_point_config()));
+                    // clear reconnect backoff
+                    current_backoff = future::Either::Left(future::pending());
                 }
-                // TODO(eliza): handle disconnected state; restart scan if not connected.
-                _ => {}
+                // We have been disconnected from an access point. Try to reconnect...
+                WifiState::Disconnected => {
+                    log::info!("Wifi reconnecting in {}...", backoff.current());
+                    current_backoff = future::Either::Right(backoff.wait());
+                    // TODO(eliza): try scan here...
+                }
+                _ => {
+                    current_backoff = future::Either::Left(future::pending());
+                }
             }
+
             futures::select! {
                 event = wifi_events.recv().fuse() => {
-                    log::debug!("wifi event: {event:?}");
+                    log::debug!("wifi event: {event:?}; state: {:?}", self.state);
                     match event {
                         WifiEvent::StaConnected => {
                             log::info!("connected to access point, waiting for IP assignment...");
                             self.state = WifiState::Connecting;
+                            backoff.reset();
                         }
                         WifiEvent::StaDisconnected => {
-                            log::info!("WiFi disconnected!");
-                            self.state = WifiState::Unconfigured;
+                            log::info!("WiFi disconnected; state: {:?}", self.state);
+                            self.state = WifiState::Disconnected;
+                        }
+                        WifiEvent::ApStaConnected => {
+                            log::info!("WiFi client connected to softAP");
+                            has_ap_client = true;
+                        }
+                        WifiEvent::ApStaDisconnected => {
+                            log::info!("WiFi client disconnected from softAP");
+                            has_ap_client = false;
                         }
                         other => {
                             log::info!("other WiFI event: {other:?}");
@@ -169,7 +195,7 @@ impl EclssWifi {
                     }
                 },
                 event = ip_events.recv().fuse() => {
-                    log::debug!("network interface event: {event:?}");
+                    log::debug!("network interface event: {event:?}; state: {:?}", self.state);
                     match event {
                         IpEvent::DhcpIpDeassigned(_) => {
                             log::info!("DHCP IP address deassigned by access point!");
@@ -181,6 +207,7 @@ impl EclssWifi {
                         assigned => {
                             log::info!("IP assigned: {assigned:?}");
                             self.state = WifiState::Connected;
+
                         }
                     }
                 },
@@ -199,8 +226,53 @@ impl EclssWifi {
                         }
                     }
                 }
+                // time to start a reconnect?
+                _ = (&mut current_backoff).fuse() => {
+                    current_backoff = future::Either::Left(futures::future::pending());
+
+                    // if a client is connected to the softAP, don't attempt to
+                    // change the WiFi configuration until it's done, so that we
+                    // don't break its connection.
+                    if has_ap_client {
+                        log::info!("cancelling reconnect attempt; a softAP client is connected");
+                        continue;
+                    }
+
+                    if let Err(error) = self.wifi.connect() {
+                        log::error!("WiFi failed to start reconnecting: {error}");
+                        self.state = WifiState::Error;
+                        continue;
+                    } else {
+                        log::info!("WiFi started reconnecting...");
+                        self.state = WifiState::Connecting;
+                    }
+                }
             }
         }
+    }
+
+    fn configure(&mut self, config: Configuration) -> anyhow::Result<()> {
+        (|| -> anyhow::Result<()> {
+            self.wifi.set_configuration(&config)?;
+            let ap_only = matches!(config, Configuration::AccessPoint(_));
+            self.config = config;
+            if !self
+                .wifi
+                .is_started()
+                .context("failed to check if wifi is started")?
+            {
+                self.wifi.start().context("failed to start wifi")?
+            }
+
+            if ap_only {
+                return Ok(());
+            }
+
+            self.wifi
+                .connect()
+                .context("failed to start connecting to access point")
+        })()
+        .context("failed to set WiFi configuration")
     }
 
     pub fn connect_to(&mut self, credentials: Credentials) -> anyhow::Result<()> {
@@ -228,14 +300,9 @@ impl EclssWifi {
             Self::access_point_config(),
         );
 
-        self.wifi
-            .set_configuration(&config)
-            .context("failed to set WiFi in mixed configuration")?;
-        self.config = config;
-
-        self.wifi
-            .connect()
-            .context("failed to connect to WiFi network")
+        self.configure(config).with_context(|| {
+            format!("failed to start connecting to {credentials:?}, channel: {channel:?}")
+        })
     }
 
     fn access_point_config() -> AccessPointConfiguration {
@@ -256,6 +323,8 @@ impl WifiState {
             WifiState::Unconfigured => npx.set_color(255, 165, 0)?,
             // failed to connect --- red
             WifiState::Error => npx.set_color(255, 0, 0)?,
+            // disconnected --- orange
+            WifiState::Disconnected => npx.set_color(255, 165, 0)?,
             // connecting --- yellow
             WifiState::Connecting => npx.set_color(255, 255, 0)?,
             // successfully connected --- all green across the board!
