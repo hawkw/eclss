@@ -19,8 +19,8 @@ pub struct Manager {
 impl Manager {
     pub async fn run<S: Sensor>(self) -> anyhow::Result<()> {
         let mut sensor = {
-            let mut backoff = ExpBackoff::new(self.retry_backoff).with_target(S::NAME);
             loop {
+                let mut backoff = ExpBackoff::new(self.retry_backoff).with_target(S::NAME);
                 match S::bringup(self.busman) {
                     Ok(sensor) => {
                         log::info!(target: S::NAME, "successfully brought up {}!", S::NAME);
@@ -40,12 +40,21 @@ impl Manager {
             }
         };
 
+        let mut backoff = ExpBackoff::new(self.poll_interval).with_target(S::NAME);
         loop {
-            if let Err(error) = sensor.poll(self.metrics) {
-                log::warn!(target: S::NAME, "error polling {}: {error:?}", S::NAME);
-                S::incr_error(self.metrics);
+            match sensor.poll(self.metrics) {
+                Err(error) => {
+                    log::warn!(target: S::NAME, "error polling {}: {error:?}", S::NAME);
+                    S::incr_error(self.metrics);
+                    backoff.wait().await;
+                }
+                Ok(()) => {
+                    // if we have previously backed off due to repeated errors,
+                    // reset the backoff now that the sensor is alive again.
+                    backoff.reset();
+                    Timer::after(self.poll_interval).await;
+                }
             }
-            Timer::after(self.poll_interval).await;
         }
     }
 }
