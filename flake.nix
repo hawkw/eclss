@@ -26,6 +26,7 @@
           LIBCLANG_PATH = "${pkgs.llvmPackages.libclang.lib}/lib";
           buildInputs = let
             webPkgs = with pkgs; [
+              # trunk --- used for building the wasm webapp
               trunk
               wasm-bindgen-cli
               binaryen
@@ -39,32 +40,24 @@
               cmake
               ninja
               python311
-              # python3Packages.pip
-              # python3Packages.virtualenv
               (gcc-riscv32-esp32c3-elf-bin.override {
                 version = "2021r2-patch5";
                 hash = "sha256-99c+X54t8+psqOLJXWym0j1rOP0QHqXTAS88s81Z858=";
               })
             ];
-            pythonPkgs = with pkgs.python3Packages; [
-              pip
-              virtualenv
-              python-socketio
-              jinja2
-              itsdangerous
-            ];
+            # python packages needed to build ESP-IDF
+            pythonPkgs = with pkgs.python3Packages; [ pip virtualenv ];
           in with pkgs;
           [
             # rust tools
             rustup
             rust-analyzer
             cargo-generate
-            # trunk --- used for building the wasm webapp
-            trunk
             # just --- command runner
             just
           ] ++ webPkgs ++ esp32Pkgs ++ pythonPkgs;
           LD_LIBRARY_PATH = "${pkgs.lib.makeLibraryPath buildInputs}";
+          IDF_PYTHON_ENV_PATH = "${pkgs.python3Packages.python}/bin/python";
         };
       });
 }

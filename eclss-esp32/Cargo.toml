@@ -12,11 +12,34 @@ pio = ["esp-idf-sys/pio"]
 
 [dependencies]
 anyhow = { version = "1", default-features = false }
+channel-bridge = { version = "0.2", default-features = false, features = [
+    "notification",
+    "nightly",
+    "embedded-svc",
+] }
 edge-frame = { version = "0.5", default-features = false, features = ["assets-serve"] }
 esp-idf-sys = { version = "0.32.1", features = ["binstart"] }
-esp-idf-hal = "0.40.1"
-esp-idf-svc = { version = "0.45", features = ["alloc", "experimental"] }
-embedded-svc = { version = "0.24", features = ["alloc"] }
+esp-idf-hal = { version = "0.40.1", features = [
+    "edge-executor",
+    "embassy-sync",
+    "critical-section",
+    "std",
+] }
+esp-idf-svc = { version = "0.45", features = [
+    "alloc",
+    "experimental",
+    "nightly",
+    "embassy-time-isr-queue",
+] }
+embassy-time = "0.1.0"
+embedded-svc = { version = "0.24", features = [
+    "alloc",
+    "nightly",
+    "experimental",
+] }
+edge-executor = { version = "0.3.0" }
+futures = { version = "0.3.25" }
+heapless = "0.7.16"
 log = { version = "0.4", features = ["max_level_info"] }
 sensor-scd30 = { version = "0.4.0", default-features = false }
 serde = { version = "1", default-features = false, features = ["derive"] }
@@ -24,7 +47,8 @@ serde_urlencoded = "0.7.1"
 serde_json = "1"
 shared-bus = { version = "0.2.0", features = ["std"] }
 bosch-bme680 = "0.1.0"
-heapless = "0.7"
+# maitake = { git = "https://github.com/hawkw/mycelium", features = ["alloc", "no-cache-pad"]}
+thingbuf = "0.1.3"
 
 [build-dependencies]
 embuild = "0.31.0"
@@ -38,7 +62,7 @@ anyhow = "1"
 partition_table = "partitions.c3.csv"
 
 [package.metadata.esp-idf-sys]
-esp_idf_tools_install_dir = "global"
+# esp_idf_tools_install_dir = "global"
 esp_idf_sdkconfig = "sdkconfig"
 esp_idf_sdkconfig_defaults = ["sdkconfig.defaults"]
 # native builder only

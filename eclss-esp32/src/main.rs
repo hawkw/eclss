@@ -2,7 +2,7 @@
 // imported
 use anyhow::Context;
 
-use eclss::{bme680::Bme680, http, net, scd30::Scd30, sensor, ws2812};
+use eclss_esp32::{bme680::Bme680, http, net, scd30::Scd30, sensor, ws2812, SensorMetrics};
 use embassy_time::Duration;
 use esp_idf_hal::{
     i2c::{I2cConfig, I2cDriver},
