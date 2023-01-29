@@ -1,11 +1,15 @@
 // If using the `binstart` feature of `esp-idf-sys`, always keep this module
 // imported
 use anyhow::Context;
-use eclss_esp32::{bme680, http, net, scd30, ws2812, SensorMetrics};
+
+use eclss::{bme680::Bme680, http, net, scd30::Scd30, sensor, ws2812};
+use embassy_time::Duration;
 use esp_idf_hal::{
     i2c::{I2cConfig, I2cDriver},
     peripherals::Peripherals,
     prelude::*,
+    reset::WakeupReason,
+    task,
 };
 use esp_idf_svc::{
     eventloop::EspSystemEventLoop, log::EspLogger, mdns::EspMdns, nvs::EspDefaultNvsPartition,
@@ -15,14 +19,18 @@ use esp_idf_sys as _;
 
 static METRICS: SensorMetrics = SensorMetrics::new();
 
-// apparently Rust tasks need more stack size than the default on ESP32C3
-const STACK_SIZE: usize = 7000;
+// Make sure that the firmware will contain
+// up-to-date build time and package info coming from the binary crate
+esp_idf_sys::esp_app_desc!();
 
 fn main() -> anyhow::Result<()> {
     // It is necessary to call this function once. Otherwise, some patches to the
     // runtime implemented by esp-idf-sys might not link properly. See
     // https://github.com/esp-rs/esp-idf-template/issues/71
     esp_idf_sys::link_patches();
+    esp_idf_hal::task::critical_section::link();
+    esp_idf_svc::timer::embassy_time::driver::link();
+    esp_idf_svc::timer::embassy_time::queue::link();
 
     // let logger = EspLogger;
     EspLogger::initialize_default();
@@ -30,6 +38,8 @@ fn main() -> anyhow::Result<()> {
     // logger.set_target_level("", log::LevelFilter::Info);
     // logger.initialize();
 
+    let wakeup = WakeupReason::get();
+    log::info!("Wakeup reason: {wakeup:?}");
     log::info!("ECLSS is go!");
 
     let peripherals = Peripherals::take().unwrap();
@@ -41,15 +51,16 @@ fn main() -> anyhow::Result<()> {
     neopixel.set_color(255, 0, 0).context("set neopixel red")?;
 
     let _sntp = EspSntp::new_default().context("failed to initialize SNTP")?;
-    let sysloop = EspSystemEventLoop::take().context("failed to initialize system event loop")?;
+    let mut sysloop =
+        EspSystemEventLoop::take().context("failed to initialize system event loop")?;
     let nvs =
         EspDefaultNvsPartition::take().context("failed to initialize non-volatile storage")?;
     let mut mdns = EspMdns::take().context("failed to initialize mDNS")?;
 
-    let mut wifi = net::EclssWifi::new(peripherals.modem, &sysloop, nvs)?;
+    let wifi = net::EclssWifi::new(peripherals.modem, &mut sysloop, nvs)?;
     net::init_mdns(&mut mdns)?;
 
-    let server = http::start_server(wifi.access_points.clone(), &METRICS)?;
+    let server = http::start_server(&wifi, &METRICS)?;
 
     // Maximal I2C speed is 100 kHz and the master has to support clock
     // stretching. Sensirion recommends to operate the SCD30
@@ -60,46 +71,22 @@ fn main() -> anyhow::Result<()> {
 
     // bring up sensors
     // TODO(eliza): use the sensors to calibrate each other...
-    let scd30 = scd30::bringup(&bus).context("bringing up SCD30 failed");
-    let bme680 = bme680::bringup(&bus).context("bringing up BME680 failed");
+    let sensor_mangler = sensor::Manager {
+        metrics: &METRICS,
+        busman: bus,
+        poll_interval: Duration::from_secs(2),
+        retry_backoff: Duration::from_secs(1),
+    };
 
-    let scd30_started = scd30.and_then(|sensor| {
-        std::thread::Builder::new()
-            .stack_size(STACK_SIZE)
-            .spawn(move || scd30::run(sensor, &METRICS))
-            .context("spawning SCD30 driver thread failed")
-    });
-    if let Err(error) = scd30_started {
-        log::error!("failed to start SCD30: {error}");
-    } else {
-        // has_sensors = true;
-    }
-
-    let bme680_started = bme680.and_then(|sensor| {
-        std::thread::Builder::new()
-            .stack_size(STACK_SIZE)
-            .spawn(move || bme680::run(sensor, &METRICS))
-            .context("spawning BME680 driver thread failed")
-    });
-    if let Err(error) = bme680_started {
-        log::error!("failed to start BME680: {error}");
-    } else {
-        // has_sensors = true;
-    }
-
-    // if !has_sensors {
-    //     log::error!("/!\\ EXTREMELY TRAGIC ERROR ... NO SENSORS BROUGHT UP SUCCESSFULLY!")
-    // }
-
-    loop {
-        if let Ok(creds) = server.wifi_credentials.recv() {
-            log::info!("received WiFi credentials: {creds:?}");
-            match wifi.connect_to(&sysloop, creds) {
-                Ok(_) => log::info!("connected to WiFi access point"),
-                Err(e) => log::error!("failed to connect to WiFi access point: {e}"),
-            }
-        }
-    }
-
+    let exec: task::executor::EspExecutor<8, edge_executor::Local> =
+        task::executor::EspExecutor::new();
+    let mut tasks = heapless::Vec::new();
+    exec.spawn_local_collect(wifi.run(sysloop.clone(), neopixel), &mut tasks)
+        .context("failed to spawn wifi bg task")?;
+    exec.spawn_local_collect(sensor_mangler.run::<Scd30>(), &mut tasks)
+        .context("failed to spawn SCD30 task")?;
+    exec.spawn_local_collect(sensor_mangler.run::<Bme680>(), &mut tasks)
+        .context("failed to spawn BME680 task")?;
+    exec.run_tasks(|| true, &mut tasks);
     Ok(())
 }
