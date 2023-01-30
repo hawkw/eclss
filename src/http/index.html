@@ -1,140 +1,204 @@
 <!DOCTYPE html>
 <html>
-<meta name="viewport" content="width=350, initial-scale=1" />
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ECLSS</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
+<script src="//code.iconify.design/1/1.0.6/iconify.min.js"></script>
 <style type="text/css">
-tr.reading td {
-    border-bottom: 2px solid lightgrey;
-}
-
-tr.reading td.kind {
-    font-weight: bold;
-    text-align: right;
-    padding-right: 1rem;
-}
-
-.reading.value {
-    font-family: 'monospace';
-}
-
-tr.reading td#temp .value::after {
-    content:  " \00B0 C";
-}
-
-tr.reading td#co2 .value::after {
-    content: " ppm";
-}
-
-tr.reading td#pressure .value::after {
-    content: " hPa";
-}
-
-tr.reading td#humidity .value::after {
-    content: "%";
-}
-
-tr.reading td#gas_resistance .value::after {
-    content: " \2126";
-}
-</style>
-<script>
-    async function updateSsids() {
-        try {
-            const ssids = await fetch('/wifi/ssids.json')
-                .then((response) => response.json());
-            console.log(ssids);
-            const ssidSelect = document.getElementById('ssids');
-            ssids.forEach( ssid => {
-                let option = document.createElement("option");
-                option.textContent = ssid;
-                ssidSelect.appendChild(option);
-            })
-        } catch(error) {
-            console.error('Error updating SSIDs: ', error);
-        }
+    /* tr.reading td {
+        border-bottom: 2px solid lightgrey;
     }
 
-    async function updateSensors() {
-        try {
-            const sensors = await fetch('/sensors.json').then((response) => response.json());
+    tr.reading td.kind {
+        font-weight: bold;
+    } */
 
-            console.log(sensors);
-            for (const key in sensors) {
-                if (sensors.hasOwnProperty(key)) {
-                    const reading = sensors[key];
-                    const element = document.getElementById(key);
-                    if (element) {
-                        if (reading.hasOwnProperty('value')) {
-                            // single sensor reading
-                            let value = reading.value.toFixed(2);
-                            element.innerHTML = `<span class='reading value'>${value}</span> (${reading.sensor})`;
-                        } else {
-                            let html = '';
-                            for (const sensorName in reading) {
-                                if (reading.hasOwnProperty(sensorName)) {
-                                    let sensor = reading[sensorName];
-                                    let value = sensor.value.toFixed(2);
-                                    html += `<span class='reading value'>${value}</span> (${sensor.sensor})<br />`;
+    p#temp .value::after {
+        content:  " \00B0 C";
+    }
+
+    p#co2 .value::after {
+        content: " ppm";
+    }
+
+    p#pressure .value::after {
+        content: " hPa";
+    }
+
+    p#humidity .value::after {
+        content: "%";
+    }
+
+    p#gas_resistance .value::after {
+        content: " \2126";
+    }
+    </style>
+    <script>
+        async function updateSsids() {
+            try {
+                const ssids = await fetch('/wifi/ssids.json')
+                    .then((response) => response.json());
+                console.log(ssids);
+                const ssidSelect = document.getElementById('ssids');
+                ssids.forEach( ssid => {
+                    let option = document.createElement("option");
+                    option.textContent = ssid;
+                    ssidSelect.appendChild(option);
+                })
+            } catch(error) {
+                console.error('Error updating SSIDs: ', error);
+            }
+        }
+
+        async function updateSensors() {
+            try {
+                const sensors = await fetch('/sensors.json').then((response) => response.json());
+
+                console.log(sensors);
+                for (const key in sensors) {
+                    if (sensors.hasOwnProperty(key)) {
+                        const reading = sensors[key];
+                        const element = document.getElementById(key);
+                        if (element) {
+                            if (reading.hasOwnProperty('value')) {
+                                // single sensor reading
+                                let value = reading.value.toFixed(2);
+                                element.innerHTML = `<span class='reading value'>${value}</span>`;
+                            } else {
+                                let html = '';
+                                for (const sensorName in reading) {
+                                    if (reading.hasOwnProperty(sensorName)) {
+                                        let sensor = reading[sensorName];
+                                        let value = sensor.value.toFixed(2);
+                                        html += `<span class='reading value'>${value}</span><span class="tag">${sensor.sensor}</span><br />`;
+                                    }
                                 }
+                                element.innerHTML = html;
                             }
-                            element.innerHTML = html;
+                        } else {
+                            console.warn("No element named: ", key)
                         }
-                    } else {
-                        console.warn("No element named: ", key)
                     }
                 }
+
+            } catch(error) {
+                console.error('Error updating sensor readings: ', error);
             }
-
-        } catch(error) {
-            console.error('Error updating sensor readings: ', error);
         }
-    }
 
-    setInterval(updateSensors, 2000);
-    updateSsids();
-</script>
+        setInterval(updateSensors, 2000);
+        updateSensors();
+        updateSsids();
+    </script>
+</head>
 <body>
-    <h1>ECLSS</h1>
-    <table>
-        <tr class="reading">
-            <td class="reading kind">Temperature</td>
-            <td id="temp">--</td>
-        </tr>
-        <tr class="reading">
-            <td class="reading kind">Pressure</td>
-            <td id="pressure">--</td>
-        </tr>
-        <tr class="reading">
-            <td class="reading kind">Relative Humidity</td>
-            <td id="humidity">--</td>
-        </tr>
-        <tr class="reading">
-            <td class="reading kind">CO<sub>2</sub></td>
-            <td id="co2">--</td>
-        </tr>
-        <tr class="reading">
-            <td class="reading kind">Gas Sensor Resistance</td>
-            <td id="gas_resistance">--</td>
-        </tr>
-    </table>
-    <form method="post" action="/wifi/select" enctype="application/x-www-form-urlencoded">
-        <p><label><b>Select ECLSS WiFi network</b></label></p>
-
-        <p>
-            <label>
-                WiFi Network (SSID):
-                <select name="ssid" id="ssids">
-                </select>
-            </label>
-        </p>
-        <p>
-            <label>
-                Password:
-                <input type="password" pattern=".{{8,}}" required title="8 characters minimum" name="password">
-            </label>
-        </p>
-
-        <p><input type="submit" value="Select"></p>
-    </form>
+    <section class="hero is-primary">
+        <div class="hero-body">
+            <h1 class="title">
+                ECLSS
+            </h1>
+            <p class="subtitle">
+                Environmental Controls and Life Support Systems
+            </p>
+        </div>
+    </section>
+    <section class = "section">
+        <nav class="level">
+            <div class="level-item has-text-centered">
+              <div class = ".reading">
+                <p class="heading">
+                    <span class="icon-text">
+                        <span class="icon iconify" data-icon="mdi-temperature"></span>
+                        <span>Temperature</span>
+                    </span>
+                </p>
+                <p class="title" id="temp">--</p>
+              </div>
+            </div>
+            <div class="level-item has-text-centered">
+              <div class = ".reading">
+                <p class="heading">
+                    <span class="icon-text">
+                        <span class="icon iconify" data-icon="mdi-weather-dust"></span>
+                        <span>Carbon Dioxide</span>
+                    </span>
+                <p class="title" id="co2">--</p>
+              </div>
+            </div>
+            <div class="level-item has-text-centered">
+                <div class = ".reading">
+                    <p class="heading">
+                        <span class="icon-text">
+                            <span class="icon iconify" data-icon="mdi-cloud-download"></span>
+                            <span>Barometric Pressure</span>
+                        </span>
+                    </p>
+                    <p class="title" id="pressure">--</p>
+                </div>
+            </div>
+            <div class="level-item has-text-centered">
+                <div class = ".reading">
+                    <p class="heading">
+                        <span class="icon-text">
+                            <span class="icon iconify" data-icon="mdi-water-percent"></span>
+                            <span>Relative Humidity</span>
+                        </span>
+                    </p>
+                    <p class="title" id="humidity">--</p>
+                </div>
+            </div>
+            <div class="level-item has-text-centered">
+                <div class = ".reading">
+                    <p class="heading">
+                        <span class="icon-text">
+                            <span class="icon iconify" data-icon="mdi-spray"></span>
+                            <span>VOC Sensor Resistance</span>
+                        </span>
+                    </p>
+                    <p class="title" id="gas_resistance">--</p>
+                </div>
+            </div>
+          </nav>
+    </section>
+    <section class = "section">
+        <div class = "container">
+            <form
+                method="post" action="/wifi/select"
+                enctype="application/x-www-form-urlencoded">
+            <h5 class="title is-5">
+                <span class="icon-text">
+                    <span class="icon iconify" data-icon="mdi-wifi-cog"></span>
+                    <span>Select WiFi Network</span>
+                </span>
+            </h5>
+                <div class="field">
+                    <label class="label">Access Point (SSID)</label>
+                    <div class="control">
+                        <div class="select">
+                            <select name="ssid" id="ssids">
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="field">
+                    <label class="label">Password</label>
+                    <p class="control has-icons-left">
+                        <input class="input" type="password" pattern=".{{8,}}"
+                        required placeholder="Password" title="8 characters minimum"
+                        name="password">
+                        <span class="icon is-small is-left">
+                            <span class="icon iconify" data-icon="mdi-wifi-lock"></span>
+                        </span>
+                    </p>
+                </div>
+                <div class = "control">
+                    <input type="submit" value="Select" class="button is-primary">
+                </div>
+            </form>
+        </div>
+    </section>
 </body>
 
 </html>
