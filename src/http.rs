@@ -16,6 +16,8 @@ pub struct Server {
 pub const HTTP_PORT: u16 = 80;
 pub const HTTPS_PORT: u16 = 443;
 
+const JSON: &str = "application/json";
+
 pub fn start_server(
     wifi: &net::EclssWifi,
     metrics: &'static SensorMetrics,
@@ -30,18 +32,19 @@ pub fn start_server(
     let creds_tx = wifi.credentials_tx();
     server
         .fn_handler("/", Method::Get, move |req| {
-            let mut ssids = String::new();
-            for ap in access_points.read().unwrap().iter() {
-                use std::fmt::Write;
-                write!(&mut ssids, "<option>{ssid}</option>", ssid = ap.ssid)?;
-            }
-            let rsp = format!(include_str!("./http/index.html"), ssids);
-            req.into_ok_response()?.write_all(rsp.as_bytes())?;
+            static INDEX: &[u8] = include_bytes!("./http/index.html");
+            // let mut ssids = String::new();
+            // for ap in access_points.read().unwrap().iter() {
+            //     use std::fmt::Write;
+            //     write!(&mut ssids, "<option>{ssid}</option>", ssid = ap.ssid)?;
+            // }
+            // let rsp = format!(include_str!("./http/index.html"), ssids);
+            req.into_ok_response()?.write_all(INDEX)?;
 
             Ok(())
         })
         .context("adding GET / handler")?
-        .fn_handler("/wifi-select", Method::Post, move |mut req| {
+        .fn_handler("/wifi/select", Method::Post, move |mut req| {
             let mut body = vec![0; 40];
             read_body(&mut req, &mut body)?;
 
@@ -53,7 +56,7 @@ pub fn start_server(
                 .context("sending wifi credentials")?;
             Ok(())
         })
-        .context("adding POST /wifi-select handler")?
+        .context("adding POST /wifi/select handler")?
         // TODO(eliza): also serve this on the normal prometheus metrics port?
         .fn_handler("/metrics", Method::Get, move |req| {
             let mut rsp = req.into_response(
@@ -69,7 +72,17 @@ pub fn start_server(
         .fn_handler("/sensors.json", Method::Get, move |req| {
             get_sensors(req, metrics)
         })
-        .context("adding GET /sensors.json handler")?;
+        .context("adding GET /sensors.json handler")?
+        .fn_handler("/wifi/ssids.json", Method::Get, move |req| {
+            let ssids = access_points.read().unwrap();
+            let ssids = ssids.iter().map(|ap| &ap.ssid).collect::<Vec<_>>();
+            let mut rsp = req.into_response(200, Some("OK"), &[(header::CONTENT_TYPE, JSON)])?;
+            // TODO(eliza): don't allocate here...
+            let json = serde_json::to_string_pretty(&ssids)?;
+            rsp.write_all(json.as_bytes())?;
+            Ok(())
+        })
+        .context("adding GET /wifi/ssids.json handler")?;
 
     log::info!("Server is running on http://192.168.71.1/");
 
@@ -77,8 +90,6 @@ pub fn start_server(
 }
 
 fn get_sensors<C: Connection>(req: Request<C>, sensors: &'static SensorMetrics) -> HandlerResult {
-    const JSON: &str = "application/json";
-
     // XXX(eliza): this is technically more correct but i wanna be able to open
     // it in the browser...
     /*

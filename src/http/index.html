@@ -1,15 +1,128 @@
 <!DOCTYPE html>
 <html>
 <meta name="viewport" content="width=350, initial-scale=1" />
+<style type="text/css">
+tr.reading td {
+    border-bottom: 2px solid lightgrey;
+}
+
+tr.reading td.kind {
+    font-weight: bold;
+    text-align: right;
+    padding-right: 1rem;
+}
+
+.reading.value {
+    font-family: 'monospace';
+}
+
+tr.reading td#temp .value::after {
+    content:  " \00B0 C";
+}
+
+tr.reading td#co2 .value::after {
+    content: " ppm";
+}
+
+tr.reading td#pressure .value::after {
+    content: " hPa";
+}
+
+tr.reading td#humidity .value::after {
+    content: "%";
+}
+
+tr.reading td#gas_resistance .value::after {
+    content: " \2126";
+}
+</style>
+<script>
+    async function updateSsids() {
+        try {
+            const ssids = await fetch('/wifi/ssids.json')
+                .then((response) => response.json());
+            console.log(ssids);
+            const ssidSelect = document.getElementById('ssids');
+            ssids.forEach( ssid => {
+                let option = document.createElement("option");
+                option.textContent = ssid;
+                ssidSelect.appendChild(option);
+            })
+        } catch(error) {
+            console.error('Error updating SSIDs: ', error);
+        }
+    }
+
+    async function updateSensors() {
+        try {
+            const sensors = await fetch('/sensors.json').then((response) => response.json());
+
+            console.log(sensors);
+            for (const key in sensors) {
+                if (sensors.hasOwnProperty(key)) {
+                    const reading = sensors[key];
+                    const element = document.getElementById(key);
+                    if (element) {
+                        if (reading.hasOwnProperty('value')) {
+                            // single sensor reading
+                            let value = reading.value.toFixed(2);
+                            element.innerHTML = `<span class='reading value'>${value}</span> (${reading.sensor})`;
+                        } else {
+                            let html = '';
+                            for (const sensorName in reading) {
+                                if (reading.hasOwnProperty(sensorName)) {
+                                    let sensor = reading[sensorName];
+                                    let value = sensor.value.toFixed(2);
+                                    html += `<span class='reading value'>${value}</span> (${sensor.sensor})<br />`;
+                                }
+                            }
+                            element.innerHTML = html;
+                        }
+                    } else {
+                        console.warn("No element named: ", key)
+                    }
+                }
+            }
+
+        } catch(error) {
+            console.error('Error updating sensor readings: ', error);
+        }
+    }
+
+    setInterval(updateSensors, 2000);
+    updateSsids();
+</script>
 <body>
-    <form method="post" action="/wifi-select" enctype="application/x-www-form-urlencoded">
+    <h1>ECLSS</h1>
+    <table>
+        <tr class="reading">
+            <td class="reading kind">Temperature</td>
+            <td id="temp">--</td>
+        </tr>
+        <tr class="reading">
+            <td class="reading kind">Pressure</td>
+            <td id="pressure">--</td>
+        </tr>
+        <tr class="reading">
+            <td class="reading kind">Relative Humidity</td>
+            <td id="humidity">--</td>
+        </tr>
+        <tr class="reading">
+            <td class="reading kind">CO<sub>2</sub></td>
+            <td id="co2">--</td>
+        </tr>
+        <tr class="reading">
+            <td class="reading kind">Gas Sensor Resistance</td>
+            <td id="gas_resistance">--</td>
+        </tr>
+    </table>
+    <form method="post" action="/wifi/select" enctype="application/x-www-form-urlencoded">
         <p><label><b>Select ECLSS WiFi network</b></label></p>
 
         <p>
             <label>
                 WiFi Network (SSID):
-                <select name="ssid">
-                    {}
+                <select name="ssid" id="ssids">
                 </select>
             </label>
         </p>
