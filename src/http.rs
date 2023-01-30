@@ -3,20 +3,19 @@ use anyhow::Context;
 use embedded_svc::{
     http::{
         server::{Connection, HandlerResult, Request},
-        Headers, Method,
+        Method,
     },
     io::{Read, Write},
 };
 use esp_idf_svc::http::server::{Configuration, EspHttpServer};
+use serde::Serialize;
 
 pub struct Server {
-    server: EspHttpServer,
+    _server: EspHttpServer,
 }
 
 pub const HTTP_PORT: u16 = 80;
 pub const HTTPS_PORT: u16 = 443;
-
-const JSON: &str = "application/json";
 
 pub fn start_server(
     wifi: &net::EclssWifi,
@@ -33,14 +32,12 @@ pub fn start_server(
     server
         .fn_handler("/", Method::Get, move |req| {
             static INDEX: &[u8] = include_bytes!("./http/index.html");
-            // let mut ssids = String::new();
-            // for ap in access_points.read().unwrap().iter() {
-            //     use std::fmt::Write;
-            //     write!(&mut ssids, "<option>{ssid}</option>", ssid = ap.ssid)?;
-            // }
-            // let rsp = format!(include_str!("./http/index.html"), ssids);
-            req.into_ok_response()?.write_all(INDEX)?;
-
+            req.into_response(
+                200,
+                Some("OK"),
+                &[(header::CONTENT_TYPE, content_type::HTML)],
+            )?
+            .write_all(INDEX)?;
             Ok(())
         })
         .context("adding GET / handler")?
@@ -50,7 +47,12 @@ pub fn start_server(
 
             let credentials = serde_urlencoded::from_bytes(&body)?;
             let content = r#"<!DOCTYPE html><html><body>Submitted!</body></html>"#;
-            req.into_ok_response()?.write_all(content.as_bytes())?;
+            req.into_response(
+                200,
+                Some("OK"),
+                &[(header::CONTENT_TYPE, content_type::HTML)],
+            )?
+            .write_all(content.as_bytes())?;
             creds_tx
                 .try_send(credentials)
                 .context("sending wifi credentials")?;
@@ -70,26 +72,22 @@ pub fn start_server(
         })
         .context("adding GET /metrics handler")?
         .fn_handler("/sensors.json", Method::Get, move |req| {
-            get_sensors(req, metrics)
+            serve_json(req, metrics)
         })
         .context("adding GET /sensors.json handler")?
         .fn_handler("/wifi/ssids.json", Method::Get, move |req| {
             let ssids = access_points.read().unwrap();
             let ssids = ssids.iter().map(|ap| &ap.ssid).collect::<Vec<_>>();
-            let mut rsp = req.into_response(200, Some("OK"), &[(header::CONTENT_TYPE, JSON)])?;
-            // TODO(eliza): don't allocate here...
-            let json = serde_json::to_string_pretty(&ssids)?;
-            rsp.write_all(json.as_bytes())?;
-            Ok(())
+            serve_json(req, &ssids)
         })
         .context("adding GET /wifi/ssids.json handler")?;
 
     log::info!("Server is running on http://192.168.71.1/");
 
-    Ok(Server { server })
+    Ok(Server { _server: server })
 }
 
-fn get_sensors<C: Connection>(req: Request<C>, sensors: &'static SensorMetrics) -> HandlerResult {
+fn serve_json<C: Connection>(req: Request<C>, json: &impl Serialize) -> HandlerResult {
     // XXX(eliza): this is technically more correct but i wanna be able to open
     // it in the browser...
     /*
@@ -102,9 +100,13 @@ fn get_sensors<C: Connection>(req: Request<C>, sensors: &'static SensorMetrics) 
     }
     */
 
-    let mut rsp = req.into_response(200, Some("OK"), &[(header::CONTENT_TYPE, JSON)])?;
+    let mut rsp = req.into_response(
+        200,
+        Some("OK"),
+        &[(header::CONTENT_TYPE, content_type::JSON)],
+    )?;
     // TODO(eliza): don't allocate here...
-    let json = serde_json::to_string_pretty(&sensors)?;
+    let json = serde_json::to_string_pretty(&json)?;
     rsp.write_all(json.as_bytes())?;
     Ok(())
 }
@@ -131,4 +133,10 @@ fn read_body<R: Read>(response: &mut R, buf: &mut Vec<u8>) -> anyhow::Result<usi
 
 mod header {
     pub(super) const CONTENT_TYPE: &str = "content-type";
+}
+
+mod content_type {
+
+    pub(super) const JSON: &str = "application/json";
+    pub(super) const HTML: &str = "text/html";
 }
