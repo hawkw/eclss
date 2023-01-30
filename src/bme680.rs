@@ -32,6 +32,9 @@ impl Sensor for Bme680 {
         } = self
             .measure()
             .map_err(|error| anyhow::anyhow!("error reading from BME680: {error:?}"))?;
+        // pretty sure the `bosch-bme680` library is off by a factor of 100 when
+        // representing pressures as hectopascals...
+        let pressure = pressure / 100f32;
         log::info!("[BME680]: Pressure: {pressure:>3.3} hPa, Temp: {temperature:>3.3} \u{00B0}C, Humidity: {humidity:>3.3}%");
         metrics.pressure.sensors().set_value(pressure);
         metrics.temp.sensors().bme680.set_value(temperature);
