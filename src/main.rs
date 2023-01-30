@@ -59,7 +59,7 @@ fn main() -> anyhow::Result<()> {
     let wifi = net::EclssWifi::new(peripherals.modem, &mut sysloop, nvs)?;
     net::init_mdns(&mut mdns)?;
 
-    let server = http::start_server(&wifi, &METRICS)?;
+    let _server = http::start_server(&wifi, &METRICS)?;
 
     // Maximal I2C speed is 100 kHz and the master has to support clock
     // stretching. Sensirion recommends to operate the SCD30

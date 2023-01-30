@@ -138,7 +138,7 @@ impl EclssWifi {
         // exponential backoff for reconnecting, starting at 500 milliseconds.
         let mut backoff =
             retry::ExpBackoff::new(Duration::from_millis(500)).with_target("eclss::net");
-        let mut current_backoff = future::Either::Left(future::pending());
+        let mut current_backoff;
         let mut has_ap_client = false;
 
         loop {
@@ -152,7 +152,8 @@ impl EclssWifi {
             match self.state {
                 WifiState::Error => {
                     log::info!("WiFi in error state; setting AP mode");
-                    self.configure(Configuration::AccessPoint(Self::access_point_config()));
+                    self.configure(Configuration::AccessPoint(Self::access_point_config()))
+                        .context("failed to set AP mode")?;
                     // clear reconnect backoff
                     current_backoff = future::Either::Left(future::pending());
                 }
@@ -228,8 +229,6 @@ impl EclssWifi {
                 }
                 // time to start a reconnect?
                 _ = (&mut current_backoff).fuse() => {
-                    current_backoff = future::Either::Left(futures::future::pending());
-
                     // if a client is connected to the softAP, don't attempt to
                     // change the WiFi configuration until it's done, so that we
                     // don't break its connection.

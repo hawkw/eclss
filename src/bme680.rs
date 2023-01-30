@@ -1,4 +1,4 @@
-use crate::{sensor::Sensor, I2cBus, I2cRef, Retry, SensorMetrics};
+use crate::{sensor::Sensor, I2cBus, I2cRef, SensorMetrics};
 use esp_idf_hal::delay::Ets;
 
 pub type Bme680 = bosch_bme680::Bme680<I2cRef<'static>, Ets>;
