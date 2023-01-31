@@ -67,6 +67,11 @@ impl EclssWifi {
 
         // restore a previous client configuration from NVS.
         let config = match wifi.get_configuration() {
+            // can't connect to an AP without a SSID, just switch to softAP mode.
+            Ok(Configuration::Client(client_config)) if client_config.ssid.is_empty() => {
+                log::info!("NVS client config has an empty SSID, starting in access point mode (is this a fresh board?)");
+                Configuration::AccessPoint(Self::access_point_config())
+            }
             // if a previous client configuration was saved in NVS, map it to a
             // mixed config so we can continue running an AP as well as connecting.
             Ok(Configuration::Client(client_config)) => {
