@@ -57,7 +57,7 @@
         }
 
         async function updateSensors() {
-            const readingClasses = "reading value is-size-1-desktop is-size2-tablet is-size-3-mobile"
+            const readingClasses = "reading value is-size-1-widescreen is-size-2-desktop is-size2-tablet is-size-3-mobile"
             try {
                 const sensors = await fetch('/sensors.json').then((response) => response.json());
 
