@@ -168,40 +168,52 @@
           </nav>
     </section>
     <section class = "section">
-        <div class = "container">
-            <form
-                method="post" action="/wifi/select"
-                enctype="application/x-www-form-urlencoded">
-            <h5 class="title is-5">
+        <div class = "panel">
+            <p class="panel-heading">
                 <span class="icon-text">
                     <span class="icon iconify" data-icon="mdi-wifi-cog"></span>
-                    <span>Select WiFi Network</span>
+                    <span>WiFi</span>
                 </span>
-            </h5>
-                <div class="field">
-                    <label class="label">Access Point (SSID)</label>
-                    <div class="control">
-                        <div class="select">
-                            <select name="ssid" id="ssids">
-                            </select>
+            </p>
+            <div class="panel-block">
+                <form
+                    method="post" action="/wifi/select"
+                    enctype="application/x-www-form-urlencoded">
+                    <div>
+                        <div class="field">
+                            <label class="label">Access Point (SSID)</label>
+                            <div class="control has-icons-left">
+                                <span class="select">
+                                    <select name="ssid" id="ssids"></select>
+                                </span>
+                                <span class="icon is-small is-left iconify" data-icon="mdi-access-point-network"></span>
+                            </div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="field">
+                            <label class="label">Password</label>
+                            <div class="control has-icons-left">
+                                <input
+                                    class="input"
+                                    type="password"
+                                    pattern=".{{8,}}"
+                                    placeholder="Password"
+                                    title="8 characters minimum"
+                                    name="password"
+                                >
+                                <span class="icon is-small is-left iconify" data-icon="mdi-wifi-lock"></span>
+                            </p>
                         </div>
                     </div>
                 </div>
-                <div class="field">
-                    <label class="label">Password</label>
-                    <p class="control has-icons-left">
-                        <input class="input" type="password" pattern=".{{8,}}"
-                        required placeholder="Password" title="8 characters minimum"
-                        name="password">
-                        <span class="icon is-small is-left">
-                            <span class="icon iconify" data-icon="mdi-wifi-lock"></span>
-                        </span>
-                    </p>
-                </div>
-                <div class = "control">
-                    <input type="submit" value="Select" class="button is-primary">
+                <div>
+                    <div class = "control card-footer-item">
+                        <input type="submit" value="Select", class = "button is-primary">
+                    </div>
                 </div>
             </form>
+            </div>
         </div>
     </section>
 </body>
