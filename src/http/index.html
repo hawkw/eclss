@@ -53,6 +53,7 @@
         }
 
         async function updateSensors() {
+            const readingClasses = "reading value is-monospace has-text-weight-bold"
             try {
                 const sensors = await fetch('/sensors.json').then((response) => response.json());
 
@@ -65,14 +66,14 @@
                             if (reading.hasOwnProperty('value')) {
                                 // single sensor reading
                                 let value = reading.value.toFixed(2);
-                                element.innerHTML = `<span class='reading value'>${value}</span>`;
+                                element.innerHTML = `<span class='${readingClasses}'>${value}</span>`;
                             } else {
                                 let html = '';
                                 for (const sensorName in reading) {
                                     if (reading.hasOwnProperty(sensorName)) {
                                         let sensor = reading[sensorName];
                                         let value = sensor.value.toFixed(2);
-                                        html += `<span class='reading value'>${value}</span><span class="tag">${sensor.sensor}</span><br />`;
+                                        html += `<span class='${readingClasses} has-text-right'>${value}</span><span class='tag has-text-left'>${sensor.sensor}</span><br />`;
                                     }
                                 }
                                 element.innerHTML = html;
