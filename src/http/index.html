@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>ECLSS</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
+<link rel="stylesheet" href="https://iosevka-webfonts.github.io/iosevka/iosevka.css" /> 
 <script src="//code.iconify.design/1/1.0.6/iconify.min.js"></script>
 <style type="text/css">
     /* tr.reading td {
@@ -14,6 +15,9 @@
     tr.reading td.kind {
         font-weight: bold;
     } */
+    .reading.value {
+        font-family: 'Iosevka Web';
+    }
 
     p#temp .value::after {
         content:  " \00B0 C";
@@ -53,7 +57,7 @@
         }
 
         async function updateSensors() {
-            const readingClasses = "reading value is-monospace has-text-weight-bold"
+            const readingClasses = "reading value is-size-1-desktop is-size2-tablet is-size-3-mobile"
             try {
                 const sensors = await fetch('/sensors.json').then((response) => response.json());
 
@@ -66,7 +70,7 @@
                             if (reading.hasOwnProperty('value')) {
                                 // single sensor reading
                                 let value = reading.value.toFixed(2);
-                                element.innerHTML = `<span class='${readingClasses}'>${value}</span>`;
+                                element.innerHTML = `<span class='${readingClasses} has-text-centered'>${value}</span>`;
                             } else {
                                 let html = '';
                                 for (const sensorName in reading) {
@@ -107,9 +111,9 @@
     </section>
     <section class = "section">
         <nav class="level">
-            <div class="level-item has-text-centered">
+            <div class="level-item">
               <div class = ".reading">
-                <p class="heading">
+                <p class="heading has-text-centered">
                     <span class="icon-text">
                         <span class="icon iconify" data-icon="mdi-temperature"></span>
                         <span>Temperature</span>
@@ -118,9 +122,9 @@
                 <p class="title" id="temp">--</p>
               </div>
             </div>
-            <div class="level-item has-text-centered">
+            <div class="level-item">
               <div class = ".reading">
-                <p class="heading">
+                <p class="heading has-text-centered">
                     <span class="icon-text">
                         <span class="icon iconify" data-icon="mdi-molecule-co2"></span>
                         <span>Carbon Dioxide</span>
@@ -128,9 +132,9 @@
                 <p class="title" id="co2">--</p>
               </div>
             </div>
-            <div class="level-item has-text-centered">
+            <div class="level-item">
                 <div class = ".reading">
-                    <p class="heading">
+                    <p class="heading has-text-centered">
                         <span class="icon-text">
                             <span class="icon iconify" data-icon="mdi-cloud-download"></span>
                             <span>Barometric Pressure</span>
@@ -139,9 +143,9 @@
                     <p class="title" id="pressure">--</p>
                 </div>
             </div>
-            <div class="level-item has-text-centered">
+            <div class="level-item">
                 <div class = ".reading">
-                    <p class="heading">
+                    <p class="heading has-text-centered">
                         <span class="icon-text">
                             <span class="icon iconify" data-icon="mdi-water-percent"></span>
                             <span>Relative Humidity</span>
@@ -150,9 +154,9 @@
                     <p class="title" id="humidity">--</p>
                 </div>
             </div>
-            <div class="level-item has-text-centered">
+            <div class="level-item">
                 <div class = ".reading">
-                    <p class="heading">
+                    <p class="heading  has-text-centered">
                         <span class="icon-text">
                             <span class="icon iconify" data-icon="mdi-spray"></span>
                             <span>VOC Sensor Resistance</span>
