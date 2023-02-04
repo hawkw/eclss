@@ -19,8 +19,11 @@
         font-family: 'Iosevka Web';
     }
 
-    p#temp .value::after {
+    p#temp .value.celcius::after {
         content:  " \00B0 C";
+    }
+    p#temp .value.fahrenheit::after {
+        content:  " \00B0 F";
     }
 
     p#co2 .value::after {
@@ -40,6 +43,8 @@
     }
     </style>
     <script>
+        var fahrenheit = false;
+
         async function updateSsids() {
             try {
                 const ssids = await fetch('/wifi/ssids.json')
@@ -57,7 +62,27 @@
         }
 
         async function updateSensors() {
-            const readingClasses = "reading value is-size-1-widescreen is-size-2-desktop is-size2-tablet is-size-3-mobile"
+            const readingClasses = "reading value is-size-1-widescreen has-text-weight-bold"
+            class Reading {
+                value;
+                classes;
+
+                constructor(key, value) {
+                    if (key == 'temp') {
+                        if (fahrenheit) {
+                            this.classes = readingClasses + ' fahrenheit';
+                            this.value = celciusToFahrenheit(value).toFixed(2);
+                        } else {
+                            this.classes = readingClasses + ' celcius';
+                            this.value = value.toFixed(2);
+                        }
+                    } else {
+                        this.classes = readingClasses;
+                        this.value = value.toFixed(2);
+                    }
+                }
+            }
+
             try {
                 const sensors = await fetch('/sensors.json').then((response) => response.json());
 
@@ -69,15 +94,15 @@
                         if (element) {
                             if (reading.hasOwnProperty('value')) {
                                 // single sensor reading
-                                let value = reading.value.toFixed(2);
-                                element.innerHTML = `<span class='${readingClasses} has-text-centered'>${value}</span>`;
+                                let r = new Reading(key, reading.value);
+                                element.innerHTML = `<span class='${r.classes} has-text-centered'>${r.value}</span>`;
                             } else {
                                 let html = '';
                                 for (const sensorName in reading) {
                                     if (reading.hasOwnProperty(sensorName)) {
                                         let sensor = reading[sensorName];
-                                        let value = sensor.value.toFixed(2);
-                                        html += `<span class='${readingClasses} has-text-right'>${value}</span><span class='tag has-text-left'>${sensor.sensor}</span><br />`;
+                                        let r = new Reading(key, sensor.value);
+                                        html += `<span class='${r.classes} has-text-right'>${r.value}</span><span class='tag has-text-left'>${sensor.sensor}</span><br />`;
                                     }
                                 }
                                 element.innerHTML = html;
@@ -93,12 +118,92 @@
             }
         }
 
+        function setFahrenheit() {
+            fahrenheit = true;
+            makeSelected(document.getElementById('temp-f').classList);
+            makeUnselected(document.getElementById('temp-c').classList);
+            console.log("Set temperature readings to Fahrenheit");
+        }
+
+        function setCelcius() {
+            fahrenheit = false;
+            makeSelected(document.getElementById('temp-c').classList);
+            makeUnselected(document.getElementById('temp-f').classList);
+            console.log("Set temperature readings to Celcius");
+        }
+
+        function makeSelected(classes) {
+            classes.add('is-selected');
+            classes.add('is-primary');
+        }
+
+
+        function makeUnselected(classes) {
+            classes.remove('is-selected');
+            classes.remove('is-primary');
+        }
+
+        function celciusToFahrenheit(celcius) {
+            return celcius * (9 / 5) + 32;
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // Get all "navbar-burger" elements
+            const $navbarBurgers = Array.prototype.slice.call(document.querySelectorAll('.navbar-burger'), 0);
+
+            // Add a click event on each of them
+            $navbarBurgers.forEach( el => {
+                el.addEventListener('click', () => {
+
+                    // Get the target from the "data-target" attribute
+                    const target = el.dataset.target;
+                    const $target = document.getElementById(target);
+
+                    // Toggle the "is-active" class on both the "navbar-burger" and the "navbar-menu"
+                    el.classList.toggle('is-active');
+                    $target.classList.toggle('is-active');
+
+                });
+            });
+        });
+
         setInterval(updateSensors, 2000);
         updateSensors();
         updateSsids();
     </script>
 </head>
 <body>
+    <nav class="navbar" role="navigation" aria-label="dropdown navigation">
+        <div class="navbar-start">
+            <div class="navbar-item">
+                <p class="title">ECLSS</p>
+            </div>
+
+            <a role="button" class="navbar-burger" aria-label="menu" aria-expanded="false" data-target="navbarBasicExample">
+                <span aria-hidden="true"></span>
+                <span aria-hidden="true"></span>
+                <span aria-hidden="true"></span>
+            </a>
+        </div>
+
+
+        <div class="navbar-end">
+            <div class="navbar-item">
+                <div class="field has-addons">
+                    <p class="control">
+                      <button class="button is-selected is-primary" id="temp-c" onclick="setCelcius();">
+                        <span class="has-text-weight-bold">&#xb0; C</span>
+                      </button>
+                    </p>
+                    <p class="control">
+                        <button class="button" id="temp-f" onclick="setFahrenheit();">
+                          <span class="has-text-weight-bold">&#xb0; F</span>
+                        </button>
+                      </p>
+                </div>
+            </div>
+        </div>
+    </nav>
     <section class="hero is-primary">
         <div class="hero-body">
             <h1 class="title">
@@ -167,6 +272,7 @@
             </div>
           </nav>
     </section>
+
     <section class = "section">
         <div class = "panel">
             <p class="panel-heading">
