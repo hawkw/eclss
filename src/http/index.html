@@ -1,49 +1,59 @@
 <!DOCTYPE html>
 <html>
+
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>ECLSS</title>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
-<link rel="stylesheet" href="https://iosevka-webfonts.github.io/iosevka/iosevka.css" /> 
-<script src="//code.iconify.design/1/1.0.6/iconify.min.js"></script>
-<style type="text/css">
-    /* tr.reading td {
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>ECLSS</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
+    <link rel="stylesheet" href="https://iosevka-webfonts.github.io/iosevka/iosevka.css" />
+    <script src="//code.iconify.design/1/1.0.6/iconify.min.js"></script>
+    <style type="text/css">
+        /* tr.reading td {
         border-bottom: 2px solid lightgrey;
     }
 
     tr.reading td.kind {
         font-weight: bold;
     } */
-    .reading.value {
-        font-family: 'Iosevka Web';
-    }
+        .reading.value {
+            font-family: 'Iosevka Web';
+        }
 
-    p#temp .value.celcius::after {
-        content:  " \00B0 C";
-    }
-    p#temp .value.fahrenheit::after {
-        content:  " \00B0 F";
-    }
+        p#temp .value.celcius::after {
+            content: " \00B0 C";
+        }
 
-    p#co2 .value::after {
-        content: " ppm";
-    }
+        p#temp .value.fahrenheit::after {
+            content: " \00B0 F";
+        }
 
-    p#pressure .value::after {
-        content: " hPa";
-    }
+        p#co2 .value::after {
+            content: " ppm";
+        }
 
-    p#humidity .value::after {
-        content: "%";
-    }
+        p#pressure .value::after {
+            content: " hPa";
+        }
 
-    p#gas_resistance .value::after {
-        content: " \2126";
-    }
+        p#humidity .value::after {
+            content: "%";
+        }
+
+        p#gas_resistance .value::after {
+            content: " \2126";
+        }
     </style>
     <script>
-        var fahrenheit = false;
+        const tempUnitKey = "tempUnit";
+        const fahrenheit = "fahrenheit";
+        const celcius = "celcius";
+
+        if ((localStorage.getItem(tempUnitKey) ?? celcius) == fahrenheit) {
+            setFahrenheit();
+        } else {
+            setCelcius();
+        }
 
         async function updateSsids() {
             try {
@@ -51,12 +61,12 @@
                     .then((response) => response.json());
                 console.log(ssids);
                 const ssidSelect = document.getElementById('ssids');
-                ssids.forEach( ssid => {
+                ssids.forEach(ssid => {
                     let option = document.createElement("option");
                     option.textContent = ssid;
                     ssidSelect.appendChild(option);
                 })
-            } catch(error) {
+            } catch (error) {
                 console.error('Error updating SSIDs: ', error);
             }
         }
@@ -69,17 +79,17 @@
 
                 constructor(key, value) {
                     if (key == 'temp') {
-                        if (fahrenheit) {
-                            this.classes = readingClasses + ' fahrenheit';
+                        const tempUnit = localStorage.getItem(tempUnitKey);
+                        this.classes = readingClasses + " " + tempUnit;
+                        if (tempUnit == fahrenheit) {
                             this.value = celciusToFahrenheit(value).toFixed(2);
-                        } else {
-                            this.classes = readingClasses + ' celcius';
-                            this.value = value.toFixed(2);
+                            return;
                         }
                     } else {
                         this.classes = readingClasses;
-                        this.value = value.toFixed(2);
                     }
+
+                    this.value = value.toFixed(2);
                 }
             }
 
@@ -113,20 +123,20 @@
                     }
                 }
 
-            } catch(error) {
+            } catch (error) {
                 console.error('Error updating sensor readings: ', error);
             }
         }
 
         function setFahrenheit() {
-            fahrenheit = true;
+            localStorage.setItem(tempUnitKey, "fahrenheit");
             makeSelected(document.getElementById('temp-f').classList);
             makeUnselected(document.getElementById('temp-c').classList);
             console.log("Set temperature readings to Fahrenheit");
         }
 
         function setCelcius() {
-            fahrenheit = false;
+            localStorage.setItem(tempUnitKey, "celcius");
             makeSelected(document.getElementById('temp-c').classList);
             makeUnselected(document.getElementById('temp-f').classList);
             console.log("Set temperature readings to Celcius");
@@ -152,7 +162,7 @@
             const $navbarBurgers = Array.prototype.slice.call(document.querySelectorAll('.navbar-burger'), 0);
 
             // Add a click event on each of them
-            $navbarBurgers.forEach( el => {
+            $navbarBurgers.forEach(el => {
                 el.addEventListener('click', () => {
 
                     // Get the target from the "data-target" attribute
@@ -172,6 +182,7 @@
         updateSsids();
     </script>
 </head>
+
 <body>
     <nav class="navbar" role="navigation" aria-label="dropdown navigation">
         <div class="navbar-start">
@@ -179,7 +190,8 @@
                 <p class="title">ECLSS</p>
             </div>
 
-            <a role="button" class="navbar-burger" aria-label="menu" aria-expanded="false" data-target="navbarBasicExample">
+            <a role="button" class="navbar-burger" aria-label="menu" aria-expanded="false"
+                data-target="navbarBasicExample">
                 <span aria-hidden="true"></span>
                 <span aria-hidden="true"></span>
                 <span aria-hidden="true"></span>
@@ -191,15 +203,15 @@
             <div class="navbar-item">
                 <div class="field has-addons">
                     <p class="control">
-                      <button class="button is-selected is-primary" id="temp-c" onclick="setCelcius();">
-                        <span class="has-text-weight-bold">&#xb0; C</span>
-                      </button>
+                        <button class="button is-selected is-primary" id="temp-c" onclick="setCelcius();">
+                            <span class="has-text-weight-bold">&#xb0; C</span>
+                        </button>
                     </p>
                     <p class="control">
                         <button class="button" id="temp-f" onclick="setFahrenheit();">
-                          <span class="has-text-weight-bold">&#xb0; F</span>
+                            <span class="has-text-weight-bold">&#xb0; F</span>
                         </button>
-                      </p>
+                    </p>
                 </div>
             </div>
         </div>
@@ -214,31 +226,31 @@
             </p>
         </div>
     </section>
-    <section class = "section">
+    <section class="section">
         <nav class="level">
             <div class="level-item">
-              <div class = ".reading">
-                <p class="heading has-text-centered">
-                    <span class="icon-text">
-                        <span class="icon iconify" data-icon="mdi-temperature"></span>
-                        <span>Temperature</span>
-                    </span>
-                </p>
-                <p class="title" id="temp">--</p>
-              </div>
+                <div class=".reading">
+                    <p class="heading has-text-centered">
+                        <span class="icon-text">
+                            <span class="icon iconify" data-icon="mdi-temperature"></span>
+                            <span>Temperature</span>
+                        </span>
+                    </p>
+                    <p class="title" id="temp">--</p>
+                </div>
             </div>
             <div class="level-item">
-              <div class = ".reading">
-                <p class="heading has-text-centered">
-                    <span class="icon-text">
-                        <span class="icon iconify" data-icon="mdi-molecule-co2"></span>
-                        <span>Carbon Dioxide</span>
-                    </span>
-                <p class="title" id="co2">--</p>
-              </div>
+                <div class=".reading">
+                    <p class="heading has-text-centered">
+                        <span class="icon-text">
+                            <span class="icon iconify" data-icon="mdi-molecule-co2"></span>
+                            <span>Carbon Dioxide</span>
+                        </span>
+                    <p class="title" id="co2">--</p>
+                </div>
             </div>
             <div class="level-item">
-                <div class = ".reading">
+                <div class=".reading">
                     <p class="heading has-text-centered">
                         <span class="icon-text">
                             <span class="icon iconify" data-icon="mdi-cloud-download"></span>
@@ -249,7 +261,7 @@
                 </div>
             </div>
             <div class="level-item">
-                <div class = ".reading">
+                <div class=".reading">
                     <p class="heading has-text-centered">
                         <span class="icon-text">
                             <span class="icon iconify" data-icon="mdi-water-percent"></span>
@@ -260,7 +272,7 @@
                 </div>
             </div>
             <div class="level-item">
-                <div class = ".reading">
+                <div class=".reading">
                     <p class="heading  has-text-centered">
                         <span class="icon-text">
                             <span class="icon iconify" data-icon="mdi-spray"></span>
@@ -270,11 +282,11 @@
                     <p class="title" id="gas_resistance">--</p>
                 </div>
             </div>
-          </nav>
+        </nav>
     </section>
 
-    <section class = "section">
-        <div class = "panel">
+    <section class="section">
+        <div class="panel">
             <p class="panel-heading">
                 <span class="icon-text">
                     <span class="icon iconify" data-icon="mdi-wifi-cog"></span>
@@ -282,9 +294,7 @@
                 </span>
             </p>
             <div class="panel-block">
-                <form
-                    method="post" action="/wifi/select"
-                    enctype="application/x-www-form-urlencoded">
+                <form method="post" action="/wifi/select" enctype="application/x-www-form-urlencoded">
                     <div>
                         <div class="field">
                             <label class="label">Access Point (SSID)</label>
@@ -300,25 +310,19 @@
                         <div class="field">
                             <label class="label">Password</label>
                             <div class="control has-icons-left">
-                                <input
-                                    class="input"
-                                    type="password"
-                                    pattern=".{{8,}}"
-                                    placeholder="Password"
-                                    title="8 characters minimum"
-                                    name="password"
-                                >
+                                <input class="input" type="password" pattern=".{{8,}}" placeholder="Password"
+                                    title="8 characters minimum" name="password">
                                 <span class="icon is-small is-left iconify" data-icon="mdi-wifi-lock"></span>
-                            </p>
+                                </p>
+                            </div>
                         </div>
                     </div>
-                </div>
-                <div>
-                    <div class = "control card-footer-item">
-                        <input type="submit" value="Select", class = "button is-primary">
+                    <div>
+                        <div class="control card-footer-item">
+                            <input type="submit" value="Select" , class="button is-primary">
+                        </div>
                     </div>
-                </div>
-            </form>
+                </form>
             </div>
         </div>
     </section>
