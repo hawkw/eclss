@@ -5,6 +5,8 @@ use esp_idf_hal::{delay::Ets, i2c::I2cError};
 pub type Scd30 = sensor_scd30::Scd30<I2cRef<'static>, Ets, I2cError>;
 
 impl Sensor for Scd30 {
+    type ControlMessage = ();
+
     const NAME: &'static str = "SCD30";
 
     fn bringup(busman: &'static I2cBus) -> anyhow::Result<Self> {
@@ -57,5 +59,10 @@ impl Sensor for Scd30 {
 
     fn incr_error(metrics: &SensorMetrics) {
         metrics.sensor_errors.sensors().scd30.incr();
+    }
+
+    fn handle_control_message(&mut self, msg: &Self::ControlMessage) -> anyhow::Result<()> {
+        // TODO(eliza): calibration mode!
+        anyhow::bail!("not yet implemented")
     }
 }

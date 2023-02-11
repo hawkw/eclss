@@ -4,6 +4,8 @@ use esp_idf_hal::delay::Ets;
 pub type Bme680 = bosch_bme680::Bme680<I2cRef<'static>, Ets>;
 
 impl Sensor for Bme680 {
+    type ControlMessage = ();
+
     const NAME: &'static str = "BME680";
 
     fn bringup(busman: &'static I2cBus) -> anyhow::Result<Self> {
@@ -45,6 +47,11 @@ impl Sensor for Bme680 {
         }
 
         Ok(())
+    }
+
+    fn handle_control_message(&mut self, msg: &Self::ControlMessage) -> anyhow::Result<()> {
+        // TODO(eliza): calibrate with ambient temp?
+        anyhow::bail!("not yet implemented")
     }
 
     fn incr_error(metrics: &SensorMetrics) {
