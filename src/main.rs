@@ -1,7 +1,7 @@
 // If using the `binstart` feature of `esp-idf-sys`, always keep this module
 // imported
 use anyhow::Context;
-use eclss::{bme680::Bme680, http, net, scd30::Scd30, sensor, ws2812};
+use eclss::{actor, bme680::Bme680, http, net, scd30::Scd30, sensor, ws2812};
 use embassy_time::Duration;
 use esp_idf_hal::{
     i2c::{I2cConfig, I2cDriver},
@@ -82,10 +82,21 @@ fn main() -> anyhow::Result<()> {
     let mut tasks = heapless::Vec::new();
     exec.spawn_local_collect(wifi.run(sysloop.clone(), neopixel), &mut tasks)
         .context("failed to spawn wifi bg task")?;
-    exec.spawn_local_collect(sensor_mangler.run::<Scd30>(), &mut tasks)
-        .context("failed to spawn SCD30 task")?;
-    exec.spawn_local_collect(sensor_mangler.run::<Bme680>(), &mut tasks)
-        .context("failed to spawn BME680 task")?;
+
+    let _scd30_control = {
+        let (tx, rx) = actor::channel(10);
+        exec.spawn_local_collect(sensor_mangler.run::<Scd30>(rx), &mut tasks)
+            .context("failed to spawn SCD30 task")?;
+        tx
+    };
+
+    let _bme680_control = {
+        let (tx, rx) = actor::channel(10);
+        exec.spawn_local_collect(sensor_mangler.run::<Bme680>(rx), &mut tasks)
+            .context("failed to spawn BME680 task")?;
+        tx
+    };
+
     exec.run_tasks(|| true, &mut tasks);
     Ok(())
 }
