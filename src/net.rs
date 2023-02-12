@@ -18,14 +18,14 @@ use thingbuf::mpsc;
 
 use std::sync::{Arc, RwLock};
 
-use crate::{retry, ws2812};
+use crate::{actor, retry, ws2812};
 
 pub struct EclssWifi {
     wifi: Box<EspWifi<'static>>,
     pub access_points: AccessPoints,
     config: Configuration,
-    creds_rx: mpsc::Receiver<Credentials>,
-    creds_tx: mpsc::Sender<Credentials>,
+    creds_tx: actor::Client<Credentials, anyhow::Result<()>>,
+    creds_rx: actor::Actor<Credentials, anyhow::Result<()>>,
     state: WifiState,
 }
 
@@ -96,7 +96,7 @@ impl EclssWifi {
         };
         wifi.set_configuration(&config)
             .context("failed to set WiFi configuration")?;
-        let (creds_tx, creds_rx) = mpsc::channel(1);
+        let (creds_tx, creds_rx) = actor::channel(1);
         let mut this = Self {
             wifi,
             access_points: Arc::new(RwLock::new(access_points)),
@@ -118,7 +118,7 @@ impl EclssWifi {
         Ok(this)
     }
 
-    pub fn credentials_tx(&self) -> mpsc::Sender<Credentials> {
+    pub fn credentials_tx(&self) -> actor::Client<Credentials, anyhow::Result<()>> {
         self.creds_tx.clone()
     }
 
@@ -217,16 +217,19 @@ impl EclssWifi {
                         }
                     }
                 },
-                creds = self.creds_rx.recv().fuse() => {
-                    if let Some(creds) = creds {
+                msg = self.creds_rx.next_request().fuse() => {
+                    if let Some(msg) = msg {
+                        let creds = msg.request();
                         log::info!("received WiFi credentials: {creds:?}");
-                        match self.connect_to(creds) {
+                        match self.connect_to(creds.clone()) {
                             Ok(_) => {
                                 log::info!("connecting to WiFi access point");
                                 self.state = WifiState::Connecting;
+                                let _ = msg.respond(Ok(()));
                             }
                             Err(error) => {
                                 log::error!("failed to connect to WiFi access point: {error}");
+                                let _ = msg.respond(Err(error));
                                 self.state = WifiState::Error;
                             }
                         }

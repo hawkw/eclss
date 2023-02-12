@@ -21,6 +21,7 @@ pub enum ReqError<Req> {
     RspCanceled,
 }
 
+#[derive(Debug)]
 pub enum TryReqError<Req, Err> {
     Error(Err),
     Closed(Req),
@@ -84,6 +85,10 @@ impl<Req, Rsp> Envelope<Req, Rsp> {
 
     pub fn respond(self, rsp: Rsp) -> Result<(), Rsp> {
         self.rsp_tx.send(rsp)
+    }
+
+    pub fn split(self) -> (Req, oneshot::Sender<Rsp>) {
+        (self.req, self.rsp_tx)
     }
 }
 
