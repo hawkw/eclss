@@ -73,7 +73,6 @@ fn main() -> anyhow::Result<()> {
     let sensor_mangler = sensor::Manager {
         metrics: &METRICS,
         busman: bus,
-        poll_interval: Duration::from_secs(2),
         retry_backoff: Duration::from_secs(1),
     };
 

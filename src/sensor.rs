@@ -22,6 +22,9 @@ pub trait Sensor: Sized {
 
     fn poll(&mut self, metrics: &SensorMetrics) -> anyhow::Result<()>;
 
+    /// Returns the interval between calls to [`poll`].
+    fn poll_interval(&self) -> Duration;
+
     /// Handle a [`ControlMessage`] sent to this sensor.
     ///
     /// This method's behavior will depend on the control messages defined by
@@ -49,7 +52,6 @@ pub trait Sensor: Sized {
 pub struct Manager {
     pub metrics: &'static SensorMetrics,
     pub busman: &'static I2cBus,
-    pub poll_interval: Duration,
     pub retry_backoff: Duration,
 }
 
@@ -80,7 +82,7 @@ impl Manager {
             }
         };
 
-        let mut backoff = ExpBackoff::new(self.poll_interval).with_target(S::NAME);
+        let mut backoff = ExpBackoff::new(sensor.poll_interval()).with_target(S::NAME);
 
         let mut poll_wait = Timer::after(Duration::from_secs(0));
         futures::pin_mut!(ctrl_rx);
@@ -120,7 +122,7 @@ impl Manager {
                         // if we have previously backed off due to repeated errors,
                         // reset the backoff now that the sensor is alive again.
                         backoff.reset();
-                        poll_wait = Timer::after(self.poll_interval);
+                        poll_wait = Timer::after(sensor.poll_interval());
                     }
                 }
             }
