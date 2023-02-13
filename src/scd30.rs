@@ -4,8 +4,15 @@ use esp_idf_hal::{delay::Ets, i2c::I2cError};
 
 pub type Scd30 = sensor_scd30::Scd30<I2cRef<'static>, Ets, I2cError>;
 
+#[derive(Debug, Clone)]
+pub enum ControlMessage {
+    ForceCalibratePpm(u16),
+    SetAltOffset(u16),
+    SoftReset,
+}
+
 impl Sensor for Scd30 {
-    type ControlMessage = ();
+    type ControlMessage = ControlMessage;
 
     const NAME: &'static str = "SCD30";
 
@@ -20,6 +27,7 @@ impl Sensor for Scd30 {
             .firmware_version()
             .map_err(|error| anyhow!("failed to read SCD30 firmware version: {error:?}"))?;
         log::info!("connected to SCD30; firmware: {firmware}");
+
         // println!("reset: {:?}", scd30.soft_reset());
         // retry(10, || scd30.set_afc(false)).expect("failed to enable automatic calibration mode");
         // println!("enabled SCD30 automatic calibration");
@@ -40,19 +48,17 @@ impl Sensor for Scd30 {
         // Keep looping until ready
         while !self
             .data_ready()
-            .map_err(|err| anyhow::anyhow!("error waiting for data: {err:?}"))?
+            .map_err(|err| anyhow!("error waiting for data: {err:?}"))?
         {}
 
         // Fetch data when available
         let sensor_scd30::Measurement { co2, temp, rh } = self
             .read_data()
-            .map_err(|err| anyhow::anyhow!("error reading data: {err:?}"))?;
+            .map_err(|err| anyhow!("error reading data: {err:?}"))?;
         metrics.co2.sensors().set_value(co2);
         metrics.humidity.sensors().scd30.set_value(rh);
         metrics.temp.sensors().scd30.set_value(temp);
-        log::info!(
-            "[SCD30] CO2: {co2:>8.3} ppm, Temp: {temp:>3.3} \u{00B0}C, Humidity: {rh:>3.3}%"
-        );
+        log::info!("CO2: {co2:>8.3} ppm, Temp: {temp:>3.3} \u{00B0}C, Humidity: {rh:>3.3}%");
 
         Ok(())
     }
@@ -62,7 +68,27 @@ impl Sensor for Scd30 {
     }
 
     fn handle_control_message(&mut self, msg: &Self::ControlMessage) -> anyhow::Result<()> {
-        // TODO(eliza): calibration mode!
-        anyhow::bail!("not yet implemented")
+        match msg {
+            &ControlMessage::ForceCalibratePpm(ppm) => {
+                self.set_frc(ppm).map_err(|error| {
+                    anyhow!("failed to recalibrate SCD30 to {ppm} ppm: {error:?}")
+                })?;
+                log::info!("recalibrated SCD30 at {ppm} ppm");
+                Ok(())
+            }
+            &ControlMessage::SetAltOffset(altitude) => {
+                self.set_alt_offset(altitude).map_err(|error| {
+                    anyhow!("failed to set SCD30 altitude offset to {altitude}")
+                })?;
+                log::info!("set altitude offset to {altitude}");
+                Ok(())
+            }
+            ControlMessage::SoftReset => {
+                self.soft_reset()
+                    .map_err(|error| anyhow!("failed to trigger SCD30 soft reset {error:?}"))?;
+                log::info!("soft reset!");
+                Ok(())
+            }
+        }
     }
 }
