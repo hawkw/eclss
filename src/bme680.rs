@@ -49,7 +49,11 @@ impl Sensor for Bme680 {
         Ok(())
     }
 
-    fn handle_control_message(&mut self, msg: &Self::ControlMessage) -> anyhow::Result<()> {
+    fn poll_interval(&self) -> embassy_time::Duration {
+        embassy_time::Duration::from_secs(2)
+    }
+
+    fn handle_control_message(&mut self, _: &Self::ControlMessage) -> anyhow::Result<()> {
         // TODO(eliza): calibrate with ambient temp?
         anyhow::bail!("not yet implemented")
     }
