@@ -48,6 +48,82 @@
         const tempUnitKey = "tempUnit";
         const fahrenheit = "fahrenheit";
         const celcius = "celcius";
+        const sensorFetchDuration = 2000;
+
+        class ErrorManager {
+            context;
+            errors;
+
+            constructor(context) {
+                this.context = context;
+                this.errors = {};
+            }
+
+            clear() {
+                const keys = Object.keys(this.errors);
+                if (keys.length === 0 ) {
+                    return;
+                }
+
+                console.log(`"${this.context}"`, 'removing all errors');
+
+                const $notifs = document.getElementById('notifications');
+                
+                for (const key of keys) {
+                    const notif = this.errors[key];
+                    console.log("removing, key: ", key, "notif: ", notif);
+                    $notifs.removeChild(notif);
+                    delete this.errors[key];
+                }
+            }
+
+            onError(error) {
+                const message = error.toString();
+                if (this.errors.hasOwnProperty(message)) {
+                    console.log(`"${this.context}"`, 'already displaying error', error)
+                    return;
+                }
+
+                console.error(`Error ${this.context}: `, message);
+
+                const $notifs = document.getElementById('notifications');
+
+                const notif = document.createElement('div');
+                notif.classList.add('notification');
+                notif.classList.add('is-danger');
+
+                const button = document.createElement('button')
+                button.classList.add('delete')
+                button.addEventListener('click', () => {
+                    console.log(this.context, `removing error`, error);
+                    $notifs.removeChild(notif);
+                    delete this.errors[message];
+                });
+
+                const header = document.createElement('span');
+                header.classList.add('has-text-weight-bold');
+                header.appendChild(document.createTextNode(`Error ${this.context}: `));
+
+                notif.appendChild(button);
+                notif.appendChild(header);
+                notif.appendChild(document.createTextNode(message));
+
+                $notifs.appendChild(notif)
+                this.errors[message] = notif;
+            }
+        }
+
+        // polyfill for AbortSignal.timeout, which may or may not exist.
+        AbortSignal.timeout ??= function timeout(ms) {
+            const ctrl = new AbortController()
+            setTimeout(() => ctrl.abort(), ms)
+            const signal = ctrl.signal;
+            signal.throwIfAborted(`timed out after ${ms} ms`);
+            signal
+        }
+
+        let sensorErrors = new ErrorManager("updating sensor readings");
+        let ssidErrors = new ErrorManager("updating WiFi SSIDs");
 
         async function updateSsids() {
             try {
@@ -60,13 +136,14 @@
                     option.textContent = ssid;
                     ssidSelect.appendChild(option);
                 })
+
+                ssidErrors.clear();
             } catch (error) {
-                console.error('Error updating SSIDs: ', error);
+                ssidErrors.onError(error);
             }
         }
 
         async function updateSensors() {
-            const readingClasses = "reading value is-size-1-widescreen has-text-weight-bold"
             class Reading {
                 value;
                 classes;
@@ -87,8 +164,19 @@
                 }
             }
 
+            const readingClasses = "reading value is-size-1-widescreen has-text-weight-bold"
+
             try {
-                const sensors = await fetch('/sensors.json').then((response) => response.json());
+                console.log("trying to fetch sensor readings...");
+
+                const sensors = await fetch('/sensors.json', {
+                    // set a timeout for fetching sensor data so that we don't leave it
+                    // running eternally when the board is dead.
+                    signal: AbortSignal.timeout(sensorFetchDuration),
+                    headers: {
+                        'Accept': 'application/json',
+                    },
+                }).then((response) => response.json());
 
                 console.log(sensors);
                 for (const key in sensors) {
@@ -117,10 +205,13 @@
                     }
                 }
 
+                sensorErrors.clear();
+
             } catch (error) {
-                console.error('Error updating sensor readings: ', error);
+                sensorErrors.onError(error);
             }
         }
+
 
         function setFahrenheit() {
             localStorage.setItem(tempUnitKey, "fahrenheit");
@@ -152,18 +243,20 @@
         }
 
         document.addEventListener('DOMContentLoaded', () => {
-            // Get all "navbar-burger" elements
+
+            // add onclick script for navbar burgers
+            // get all "navbar-burger" elements
             const $navbarBurgers = Array.prototype.slice.call(document.querySelectorAll('.navbar-burger'), 0);
 
-            // Add a click event on each of them
+            // add a click event on each of them
             $navbarBurgers.forEach(el => {
                 el.addEventListener('click', () => {
 
-                    // Get the target from the "data-target" attribute
+                    // get the target from the "data-target" attribute
                     const target = el.dataset.target;
                     const $target = document.getElementById(target);
 
-                    // Toggle the "is-active" class on both the "navbar-burger" and the "navbar-menu"
+                    // toggle the "is-active" class on both the "navbar-burger" and the "navbar-menu"
                     el.classList.toggle('is-active');
                     $target.classList.toggle('is-active');
 
@@ -178,7 +271,7 @@
             }
 
             // start running update tasks
-            setInterval(updateSensors, 2000);
+            setInterval(updateSensors, sensorFetchDuration);
             updateSensors();
             updateSsids();
         });
@@ -218,116 +311,176 @@
             </div>
         </div>
     </nav>
-    <section class="hero is-primary">
-        <div class="hero-body">
-            <h1 class="title">
-                ECLSS
-            </h1>
-            <p class="subtitle">
-                Environmental Controls and Life Support Systems
-            </p>
-        </div>
-    </section>
-    <section class="section">
-        <nav class="level">
-            <div class="level-item">
-                <div class=".reading">
-                    <p class="heading has-text-centered">
-                        <span class="icon-text">
-                            <span class="icon iconify" data-icon="mdi-temperature"></span>
-                            <span>Temperature</span>
-                        </span>
-                    </p>
-                    <p class="title" id="temp">--</p>
-                </div>
-            </div>
-            <div class="level-item">
-                <div class=".reading">
-                    <p class="heading has-text-centered">
-                        <span class="icon-text">
-                            <span class="icon iconify" data-icon="mdi-molecule-co2"></span>
-                            <span>Carbon Dioxide</span>
-                        </span>
-                    <p class="title" id="co2">--</p>
-                </div>
-            </div>
-            <div class="level-item">
-                <div class=".reading">
-                    <p class="heading has-text-centered">
-                        <span class="icon-text">
-                            <span class="icon iconify" data-icon="mdi-cloud-download"></span>
-                            <span>Barometric Pressure</span>
-                        </span>
-                    </p>
-                    <p class="title" id="pressure">--</p>
-                </div>
-            </div>
-            <div class="level-item">
-                <div class=".reading">
-                    <p class="heading has-text-centered">
-                        <span class="icon-text">
-                            <span class="icon iconify" data-icon="mdi-water-percent"></span>
-                            <span>Relative Humidity</span>
-                        </span>
-                    </p>
-                    <p class="title" id="humidity">--</p>
-                </div>
-            </div>
-            <div class="level-item">
-                <div class=".reading">
-                    <p class="heading  has-text-centered">
-                        <span class="icon-text">
-                            <span class="icon iconify" data-icon="mdi-spray"></span>
-                            <span>VOC Sensor Resistance</span>
-                        </span>
-                    </p>
-                    <p class="title" id="gas_resistance">--</p>
-                </div>
-            </div>
-        </nav>
-    </section>
 
-    <section class="section">
-        <div class="panel">
-            <p class="panel-heading">
-                <span class="icon-text">
-                    <span class="icon iconify" data-icon="mdi-wifi-cog"></span>
-                    <span>WiFi</span>
-                </span>
-            </p>
-            <div class="panel-block">
-                <form method="post" action="/wifi/select" enctype="application/x-www-form-urlencoded">
-                    <div>
-                        <div class="field">
-                            <label class="label">Access Point (SSID)</label>
-                            <div class="control has-icons-left">
-                                <span class="select">
-                                    <select name="ssid" id="ssids"></select>
-                                </span>
-                                <span class="icon is-small is-left iconify" data-icon="mdi-access-point-network"></span>
-                            </div>
-                        </div>
-                    </div>
-                    <div>
-                        <div class="field">
-                            <label class="label">Password</label>
-                            <div class="control has-icons-left">
-                                <input class="input" type="password" pattern=".{{8,}}" placeholder="Password"
-                                    title="8 characters minimum" name="password">
-                                <span class="icon is-small is-left iconify" data-icon="mdi-wifi-lock"></span>
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                    <div>
-                        <div class="control card-footer-item">
-                            <input type="submit" value="Select" , class="button is-primary">
-                        </div>
-                    </div>
-                </form>
+    <main class="main">
+        <section class="hero is-primary">
+            <div class="container">
+                <div class="hero-body">
+                    <h1 class="title">
+                        ECLSS
+                    </h1>
+                    <p class="subtitle">
+                        Environmental Controls and Life Support Systems
+                    </p>
+                </div>
             </div>
+        </section>
+
+
+        <div class="container" id="notifications">
         </div>
-    </section>
+
+        <section class="section">
+            <nav class="level">
+                <div class="level-item">
+                    <div class=".reading">
+                        <p class="heading has-text-centered">
+                            <span class="icon-text">
+                                <span class="icon iconify" data-icon="mdi-temperature"></span>
+                                <span>Temperature</span>
+                            </span>
+                        </p>
+                        <p class="title" id="temp">--</p>
+                    </div>
+                </div>
+                <div class="level-item">
+                    <div class=".reading">
+                        <p class="heading has-text-centered">
+                            <span class="icon-text">
+                                <span class="icon iconify" data-icon="mdi-molecule-co2"></span>
+                                <span>Carbon Dioxide</span>
+                            </span>
+                        <p class="title" id="co2">--</p>
+                    </div>
+                </div>
+                <div class="level-item">
+                    <div class=".reading">
+                        <p class="heading has-text-centered">
+                            <span class="icon-text">
+                                <span class="icon iconify" data-icon="mdi-cloud-download"></span>
+                                <span>Barometric Pressure</span>
+                            </span>
+                        </p>
+                        <p class="title" id="pressure">--</p>
+                    </div>
+                </div>
+                <div class="level-item">
+                    <div class=".reading">
+                        <p class="heading has-text-centered">
+                            <span class="icon-text">
+                                <span class="icon iconify" data-icon="mdi-water-percent"></span>
+                                <span>Relative Humidity</span>
+                            </span>
+                        </p>
+                        <p class="title" id="humidity">--</p>
+                    </div>
+                </div>
+                <div class="level-item">
+                    <div class=".reading">
+                        <p class="heading  has-text-centered">
+                            <span class="icon-text">
+                                <span class="icon iconify" data-icon="mdi-spray"></span>
+                                <span>VOC Sensor Resistance</span>
+                            </span>
+                        </p>
+                        <p class="title" id="gas_resistance">--</p>
+                    </div>
+                </div>
+            </nav>
+        </section>
+
+        <section class="section">
+            <div class="container">
+                <h1 class="title">Configuration</h1>
+                <div class="columns">
+                    <div class="column">
+                        <div class="box">
+                            <form method="post" action="/wifi/select" enctype="application/x-www-form-urlencoded">
+                                <p class="heading">
+                                    <span class="icon-text">
+                                        <span class="icon iconify" data-icon="mdi-wifi-cog"></span>
+                                        <span>WiFi Settings</span>
+                                    </span>
+                                </p>
+                                    <div class="field is-horizontal">
+                                        <div class="field-label">
+                                            <label class="label">Access Point (SSID)</label>
+                                        </div>
+                                        <div class="field-body">
+                                            <div class = "field">
+                                                <div class="control has-icons-left">
+                                                    <span class="select">
+                                                        <select name="ssid" id="ssids"></select>
+                                                    </span>
+                                                    <span class="icon is-small is-left iconify" data-icon="mdi-access-point-network"></span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="field is-horizontal">
+                                        <div class="field-label">
+                                            <label class="label">Password</label>
+                                        </div>
+                                        <div class="field-body">
+                                            <div class = "field">
+                                                <div class="control has-icons-left">
+                                                    <input class="input" type="password" pattern=".{{8,}}" placeholder="Password"
+                                                        title="8 characters minimum" name="password">
+                                                    <span class="icon is-small is-left iconify" data-icon="mdi-wifi-lock"></span>
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <div class="control card-footer-item">
+                                            <input type="submit" value="Select" , class="button is-primary">
+                                        </div>
+                                    </div>
+                            </form>
+                        </div>
+                    </div>
+        
+                    <div class="column">
+                        <div class="box">
+                            <p class="heading">
+                                <span class="icon-text">
+                                    <span class="icon iconify" data-icon="mdi-cog"></span>
+                                    <span>Sensor Configuration</span>
+                                </span>
+                            </p>
+                            <!-- co2 calibration -->
+                                <form method="post" action="/sensors/co2/calibrate"
+                                enctype="application/x-www-form-urlencoded">
+                                    <div class="field is-horizontal">
+                                        <div class="field-label">
+                                            <label class="label">CO<sub>2</sub> Calibration</label>
+                                        </div>
+                                        <div class="field-body">
+                                            <div class="field">
+                                                <div class="field has-addons">
+                                                    <p class="control">
+                                                        <input class="input" type="number"
+                                                        placeholder="425" id="ppm" title="CO2 ppm"
+                                                        name="ppm">
+                                                    </p>
+                                                    <p class="control">
+                                                        <input type="submit" value="Calibrate", class="button is-warning">
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </form>
+                            </div>
+                            <!-- TODO(eliza): other stuff -->
+                        </div>
+                    </div>
+        
+                </div>
+            </div>
+        </section>
+    </main>
 </body>
 
 </html>
