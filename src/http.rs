@@ -6,9 +6,11 @@ use embedded_svc::{
         Method,
     },
     io::{Read, Write},
+    ws::asynch::server::Acceptor as WsAcceptor,
 };
-use esp_idf_svc::http::server::{Configuration, EspHttpServer};
+use esp_idf_svc::http::server::{ws::EspHttpWsProcessor, Configuration, EspHttpServer};
 use serde::Serialize;
+use std::sync::Mutex;
 
 pub struct Server {
     _server: EspHttpServer,
@@ -16,17 +18,22 @@ pub struct Server {
 
 pub const HTTP_PORT: u16 = 80;
 pub const HTTPS_PORT: u16 = 443;
+const MAX_WS_CONNS: usize = 16;
+const MAX_WS_FRAME_LEN: usize = 512;
 
 pub fn start_server(
     wifi: &net::EclssWifi,
     metrics: &'static SensorMetrics,
-) -> anyhow::Result<Server> {
+) -> anyhow::Result<(Server, impl WsAcceptor)> {
+    let (ws_processor, ws_acceptor) = EspHttpWsProcessor::<MAX_WS_CONNS, MAX_WS_FRAME_LEN>::new(());
+
     let mut server = EspHttpServer::new(&Configuration {
         http_port: HTTP_PORT,
         https_port: HTTPS_PORT,
         ..Default::default()
     })
     .context("failed to start HTTP server")?;
+
     let access_points = wifi.access_points.clone();
     let creds_tx = wifi.credentials_tx();
     server
@@ -72,6 +79,7 @@ pub fn start_server(
         })
         .context("adding GET /metrics handler")?
         .fn_handler("/sensors.json", Method::Get, move |req| {
+            log::info!("handling request for sensors.json");
             serve_json(req, metrics)
         })
         .context("adding GET /sensors.json handler")?
@@ -80,11 +88,29 @@ pub fn start_server(
             let ssids = ssids.iter().map(|ap| &ap.ssid).collect::<Vec<_>>();
             serve_json(req, &ssids)
         })
-        .context("adding GET /wifi/ssids.json handler")?;
+        .context("adding GET /wifi/ssids.json handler")?
+        .ws_handler("/ws", {
+            let ws = Mutex::new(ws_processor);
+            move |conn| ws.lock().unwrap().process(conn)
+        })
+        .context("adding websocket handler")?;
 
     log::info!("Server is running on http://192.168.71.1/");
 
-    Ok(Server { _server: server })
+    Ok((Server { _server: server }, ws_acceptor))
+}
+
+pub async fn serve_ws(ws: impl WsAcceptor, metrics: &'static SensorMetrics) -> anyhow::Result<()> {
+    loop {
+        let (tx, rx) = match ws.accept().await {
+            Ok(x) => x,
+            Err(error) => {
+                log::error!("failed to accept websocket connection: {error:?}");
+                continue;
+            }
+        };
+        log::info!("accepted ws conn");
+    }
 }
 
 fn serve_json<C: Connection>(req: Request<C>, json: &impl Serialize) -> HandlerResult {

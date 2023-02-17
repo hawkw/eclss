@@ -122,8 +122,27 @@
             signal
         }
 
-        let sensorErrors = new ErrorManager("updating sensor readings");
-        let ssidErrors = new ErrorManager("updating WiFi SSIDs");
+        const sensorErrors = new ErrorManager("updating sensor readings");
+        const ssidErrors = new ErrorManager("updating WiFi SSIDs");
+        const websockErrors = new ErrorManager("websocket")
+
+        const socket = new WebSocket(`ws://${document.location.host}/ws`);
+        socket.onopen = (event) => {
+            console.log("WebSocket opened");
+            socket.send("hi");
+        };
+
+        socket.onmessage = (event) => {
+            console.log('Message from server ', event.data);
+        };
+
+        socket.onerror = (event) => {
+            websockErrors.onError("websocket error");
+        };
+
+        socket.onclose = (event) => {
+            console.log("WebSocket closed:", event)
+        }
 
         async function updateSsids() {
             try {
