@@ -2,7 +2,7 @@ use crate::{net, SensorMetrics};
 use anyhow::Context;
 use embedded_svc::{
     http::{
-        server::{Connection, HandlerResult, Request},
+        server::{Connection, HandlerResult, Request, Response},
         Method,
     },
     io::{Read, Write},
@@ -32,42 +32,15 @@ pub fn start_server(
     server
         .fn_handler("/", Method::Get, move |req| {
             static INDEX: &[u8] = include_bytes!("./http/index.html");
-            req.into_response(
-                200,
-                Some("OK"),
-                &[(header::CONTENT_TYPE, content_type::HTML)],
-            )?
+            rsp_ok(req, content_type::HTML)?
             .write_all(INDEX)?;
             Ok(())
         })
         .context("adding GET / handler")?
-        .fn_handler("/wifi/select", Method::Post, move |mut req| {
-            let mut body = vec![0; 40];
-            read_body(&mut req, &mut body)?;
-
-            let credentials = serde_urlencoded::from_bytes(&body)?;
-            let content = r#"<!DOCTYPE html><html><body>Submitted!</body></html>"#;
-            req.into_response(
-                200,
-                Some("OK"),
-                &[(header::CONTENT_TYPE, content_type::HTML)],
-            )?
-            .write_all(content.as_bytes())?;
-            creds_tx
-                .try_send(credentials)
-                .context("sending wifi credentials")?;
-            Ok(())
-        })
-        .context("adding POST /wifi/select handler")?
         // TODO(eliza): also serve this on the normal prometheus metrics port?
         .fn_handler("/metrics", Method::Get, move |req| {
-            let mut rsp = req.into_response(
-                200,
-                Some("OK"),
-                &[(header::CONTENT_TYPE, "text/plain; version=0.0.4")],
-            )?;
+            let mut rsp = rsp_ok(req, "text/plain; version=0.0.4")?;
             metrics.render_prometheus(&mut rsp)?;
-
             Ok(())
         })
         .context("adding GET /metrics handler")?
@@ -80,7 +53,38 @@ pub fn start_server(
             let ssids = ssids.iter().map(|ap| &ap.ssid).collect::<Vec<_>>();
             serve_json(req, &ssids)
         })
-        .context("adding GET /wifi/ssids.json handler")?;
+        .context("adding GET /wifi/ssids.json handler")?
+        .fn_handler("/wifi/select", Method::Post, move |mut req| {
+            let mut body = vec![0; 40];
+            read_body(&mut req, &mut body)?;
+
+            let credentials = serde_urlencoded::from_bytes(&body)?;
+
+            match creds_tx
+                .try_send(credentials)
+                .context("sending wifi credentials")
+            {
+                Ok(()) => {
+                    log::info!("sent request to connect to WiFi network");
+                    let content = r#"<!DOCTYPE html><html><body>Submitted!</body></html>"#;
+                    rsp_ok(req, content_type::HTML)?
+                    .write_all(content.as_bytes())?;
+                }
+                Err(error) => {
+                    log::warn!("wifi control channel error: {error:?}");
+                    let content = format!(r#"<!DOCTYPE html><html><body>Failed to select WiFI network: {error:?}</body></html>"#);
+                    req.into_response(
+                        500,
+                        Some("Internal Server Error"),
+                        &[(header::CONTENT_TYPE, content_type::HTML)],
+                    )?
+                    .write_all(content.as_bytes())?;
+                }
+            }
+
+            Ok(())
+        })
+        .context("adding POST /wifi/select handler")?;
 
     log::info!("Server is running on http://192.168.71.1/");
 
@@ -100,11 +104,7 @@ fn serve_json<C: Connection>(req: Request<C>, json: &impl Serialize) -> HandlerR
     }
     */
 
-    let mut rsp = req.into_response(
-        200,
-        Some("OK"),
-        &[(header::CONTENT_TYPE, content_type::JSON)],
-    )?;
+    let mut rsp = rsp_ok(req, content_type::JSON)?;
     // TODO(eliza): don't allocate here...
     let json = serde_json::to_string_pretty(&json)?;
     rsp.write_all(json.as_bytes())?;
@@ -129,6 +129,13 @@ fn read_body<R: Read>(response: &mut R, buf: &mut Vec<u8>) -> anyhow::Result<usi
     buf.truncate(total_bytes_read);
 
     Ok(total_bytes_read)
+}
+
+fn rsp_ok<C: Connection>(
+    req: Request<C>,
+    content_type: &'static str,
+) -> Result<Response<C>, C::Error> {
+    req.into_response(200, Some("OK"), &[(header::CONTENT_TYPE, content_type)])
 }
 
 mod header {
