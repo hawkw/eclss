@@ -59,7 +59,9 @@ fn main() -> anyhow::Result<()> {
     let wifi = net::EclssWifi::new(peripherals.modem, &mut sysloop, nvs)?;
     net::init_mdns(&mut mdns)?;
 
-    let _server = http::start_server(&wifi, &METRICS)?;
+    let (scd30_ctrl, scd30_rx) = actor::channel(10);
+
+    let _server = http::start_server(&wifi, &METRICS, scd30_ctrl)?;
 
     // Maximal I2C speed is 100 kHz and the master has to support clock
     // stretching. Sensirion recommends to operate the SCD30
@@ -82,12 +84,8 @@ fn main() -> anyhow::Result<()> {
     exec.spawn_local_collect(wifi.run(sysloop.clone(), neopixel), &mut tasks)
         .context("failed to spawn wifi bg task")?;
 
-    let _scd30_control = {
-        let (tx, rx) = actor::channel(10);
-        exec.spawn_local_collect(sensor_mangler.run::<Scd30>(rx), &mut tasks)
-            .context("failed to spawn SCD30 task")?;
-        tx
-    };
+    exec.spawn_local_collect(sensor_mangler.run::<Scd30>(scd30_rx), &mut tasks)
+        .context("failed to spawn SCD30 task")?;
 
     let _bme680_control = {
         let (tx, rx) = actor::channel(10);

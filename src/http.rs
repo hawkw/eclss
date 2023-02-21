@@ -1,4 +1,4 @@
-use crate::{net, SensorMetrics};
+use crate::{actor, net, scd30, SensorMetrics};
 use anyhow::Context;
 use embedded_svc::{
     http::{
@@ -20,6 +20,7 @@ pub const HTTPS_PORT: u16 = 443;
 pub fn start_server(
     wifi: &net::EclssWifi,
     metrics: &'static SensorMetrics,
+    scd30_ctrl: actor::Client<scd30::ControlMessage, anyhow::Result<()>>,
 ) -> anyhow::Result<Server> {
     let mut server = EspHttpServer::new(&Configuration {
         http_port: HTTP_PORT,
@@ -48,6 +49,44 @@ pub fn start_server(
             serve_json(req, metrics)
         })
         .context("adding GET /sensors.json handler")?
+        .fn_handler("/sensors/co2/calibrate", Method::Post, move |mut req| {
+            // TODO(eliza): this needs to be authed...
+            
+            #[derive(Debug, Clone, Copy, serde::Deserialize, serde::Serialize)]
+            struct Calibrate {
+                ppm: u16,
+            }
+
+            let mut body = vec![0; 40];
+            read_body(&mut req, &mut body)?;
+
+            let Calibrate { ppm } = serde_urlencoded::from_bytes(&body)?;
+
+            match scd30_ctrl
+                .try_send(scd30::ControlMessage::ForceCalibrate { ppm })
+            {
+                Ok(_) => {
+                    log::info!("sent request to calibrate {ppm} ppm");
+                    let content = r#"<!DOCTYPE html><html><body>Submitted!</body></html>"#;
+                    rsp_ok(req, content_type::HTML)?
+                    .write_all(content.as_bytes())?;
+                }
+                Err(_) => {
+                    log::warn!("calibration control channel error");
+                    let content = format!(r#"<!DOCTYPE html><html><body>calibration control channel full</body></html>"#);
+                    req.into_response(
+                        500,
+                        Some("Internal Server Error"),
+                        &[(header::CONTENT_TYPE, content_type::HTML)],
+                    )?
+                    .write_all(content.as_bytes())?;
+                }
+            }
+
+            Ok(())
+
+        })
+        .context("adding POST /sensors/co2/calibrate handler")?
         .fn_handler("/wifi/ssids.json", Method::Get, move |req| {
             let ssids = access_points.read().unwrap();
             let ssids = ssids.iter().map(|ap| &ap.ssid).collect::<Vec<_>>();
@@ -62,7 +101,6 @@ pub fn start_server(
 
             match creds_tx
                 .try_send(credentials)
-                .context("sending wifi credentials")
             {
                 Ok(()) => {
                     log::info!("sent request to connect to WiFi network");

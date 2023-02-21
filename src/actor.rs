@@ -43,6 +43,17 @@ impl<Req, Rsp> Client<Req, Rsp> {
             })?;
         rsp_rx.await.map_err(|_| ReqError::RspCanceled)
     }
+
+    pub fn try_send(&self, req: Req) -> Result<oneshot::Receiver<Rsp>, ReqError<Req>> {
+        let (rsp_tx, rsp_rx) = oneshot::channel();
+        self.0
+            .try_send(Some(Envelope { req, rsp_tx }))
+            .map_err(|closed| {
+                let req = closed.into_inner().unwrap().req;
+                ReqError::Closed(req)
+            })
+            .map(|_| rsp_rx)
+    }
 }
 
 impl<Req, Rsp, Err> Client<Req, Result<Rsp, Err>> {
