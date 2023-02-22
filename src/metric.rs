@@ -150,9 +150,9 @@ impl<'a> SensorMetric<'a> for SensorGauge<'a> {
     ) -> Result<(), io::WriteFmtError<R::Error>> {
         write!(
             writer,
-            "{} {}",
+            "{}",
             self.value(),
-            self.timestamp.load(Ordering::Acquire)
+            // self.timestamp.load(Ordering::Acquire)
         )
     }
 }
@@ -201,9 +201,9 @@ impl<'a> SensorMetric<'a> for SensorCounter<'a> {
     ) -> Result<(), io::WriteFmtError<R::Error>> {
         write!(
             writer,
-            "{} {}",
+            "{}",
             self.value(),
-            self.timestamp.load(Ordering::Acquire)
+            // self.timestamp.load(Ordering::Acquire)
         )
     }
 }
