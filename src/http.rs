@@ -9,6 +9,7 @@ use embedded_svc::{
 };
 use esp_idf_svc::http::server::{Configuration, EspHttpServer};
 use serde::Serialize;
+use std::fmt;
 
 pub struct Server {
     _server: EspHttpServer,
@@ -33,8 +34,7 @@ pub fn start_server(
     server
         .fn_handler("/", Method::Get, move |req| {
             static INDEX: &[u8] = include_bytes!("./http/index.html");
-            rsp_ok(req, content_type::HTML)?
-            .write_all(INDEX)?;
+            rsp_ok(req, content_type::HTML)?.write_all(INDEX)?;
             Ok(())
         })
         .context("adding GET / handler")?
@@ -51,7 +51,7 @@ pub fn start_server(
         .context("adding GET /sensors.json handler")?
         .fn_handler("/sensors/co2/calibrate", Method::Post, move |mut req| {
             // TODO(eliza): this needs to be authed...
-            
+
             #[derive(Debug, Clone, Copy, serde::Deserialize, serde::Serialize)]
             struct Calibrate {
                 ppm: u16,
@@ -60,31 +60,27 @@ pub fn start_server(
             let mut body = vec![0; 40];
             read_body(&mut req, &mut body)?;
 
-            let Calibrate { ppm } = serde_urlencoded::from_bytes(&body)?;
+            let ppm = match serde_urlencoded::from_bytes(&body) {
+                Ok(Calibrate { ppm }) => ppm,
+                Err(error) => return send_bad_request(req, error),
+            };
 
-            match scd30_ctrl
-                .try_send(scd30::ControlMessage::ForceCalibrate { ppm })
-            {
-                Ok(_) => {
-                    log::info!("sent request to calibrate {ppm} ppm");
-                    let content = r#"<!DOCTYPE html><html><body>Submitted!</body></html>"#;
-                    rsp_ok(req, content_type::HTML)?
-                    .write_all(content.as_bytes())?;
-                }
-                Err(_) => {
-                    log::warn!("calibration control channel error");
-                    let content = format!(r#"<!DOCTYPE html><html><body>calibration control channel full</body></html>"#);
-                    req.into_response(
-                        500,
-                        Some("Internal Server Error"),
-                        &[(header::CONTENT_TYPE, content_type::HTML)],
-                    )?
-                    .write_all(content.as_bytes())?;
-                }
+            log::info!("received request to calibrate CO2 at {ppm} ppm");
+
+            let send_fut = scd30_ctrl.try_request(scd30::ControlMessage::ForceCalibrate { ppm });
+            // XXX(eliza): the use of `block_on` here is Unfortunate, switch to
+            // an async HTTP server like `edge_net`...
+            match futures::executor::block_on(send_fut) {
+                Ok(_) => send_json_rsp(
+                    req,
+                    JsonResponse {
+                        code: 200,
+                        status: "OK",
+                        message: "recalibrated SCD30",
+                    },
+                ),
+                Err(_) => send_internal_error(req, "CO2 calibration channel error"),
             }
-
-            Ok(())
-
         })
         .context("adding POST /sensors/co2/calibrate handler")?
         .fn_handler("/wifi/ssids.json", Method::Get, move |req| {
@@ -97,30 +93,25 @@ pub fn start_server(
             let mut body = vec![0; 40];
             read_body(&mut req, &mut body)?;
 
-            let credentials = serde_urlencoded::from_bytes(&body)?;
+            let credentials = match serde_urlencoded::from_bytes(&body) {
+                Ok(credentials) => credentials,
+                Err(error) => return send_bad_request(req, error),
+            };
 
             match creds_tx
                 .try_send(credentials)
+                .context("wifi control channel error")
             {
-                Ok(()) => {
-                    log::info!("sent request to connect to WiFi network");
-                    let content = r#"<!DOCTYPE html><html><body>Submitted!</body></html>"#;
-                    rsp_ok(req, content_type::HTML)?
-                    .write_all(content.as_bytes())?;
-                }
-                Err(error) => {
-                    log::warn!("wifi control channel error: {error:?}");
-                    let content = format!(r#"<!DOCTYPE html><html><body>Failed to select WiFI network: {error:?}</body></html>"#);
-                    req.into_response(
-                        500,
-                        Some("Internal Server Error"),
-                        &[(header::CONTENT_TYPE, content_type::HTML)],
-                    )?
-                    .write_all(content.as_bytes())?;
-                }
+                Ok(_) => send_json_rsp(
+                    req,
+                    JsonResponse {
+                        code: 200,
+                        status: "OK",
+                        message: "Connected",
+                    },
+                ),
+                Err(error) => send_internal_error(req, error),
             }
-
-            Ok(())
         })
         .context("adding POST /wifi/select handler")?;
 
@@ -174,6 +165,58 @@ fn rsp_ok<C: Connection>(
     content_type: &'static str,
 ) -> Result<Response<C>, C::Error> {
     req.into_response(200, Some("OK"), &[(header::CONTENT_TYPE, content_type)])
+}
+
+fn send_json_rsp<C: Connection, T: Serialize + fmt::Display>(
+    req: Request<C>,
+    json: JsonResponse<T>,
+) -> HandlerResult {
+    log::info!(
+        "responding with {} {} {}",
+        json.code,
+        json.status,
+        json.message
+    );
+    let mut rsp = req.into_response(
+        json.code,
+        Some(json.status),
+        &[(header::CONTENT_TYPE, content_type::JSON)],
+    )?;
+    // TODO(eliza): don't allocate here...
+    let json = serde_json::to_string_pretty(&json)?;
+    rsp.write_all(json.as_bytes())?;
+    Ok(())
+}
+
+fn send_bad_request<C: Connection>(req: Request<C>, error: impl fmt::Display) -> HandlerResult {
+    // TODO(eliza): don't ToString these...
+    send_json_rsp(
+        req,
+        JsonResponse {
+            code: 400,
+            status: "Bad Request",
+            message: error.to_string(),
+        },
+    )
+}
+
+fn send_internal_error<C: Connection>(req: Request<C>, error: impl fmt::Display) -> HandlerResult {
+    // TODO(eliza): don't ToString these...
+    send_json_rsp(
+        req,
+        JsonResponse {
+            code: 500,
+            status: "Internal Server Error",
+            message: error.to_string(),
+        },
+    )
+}
+
+#[derive(serde::Serialize)]
+struct JsonResponse<T: Serialize> {
+    code: u16,
+    status: &'static str,
+    message: T,
 }
 
 mod header {
