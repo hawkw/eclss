@@ -342,12 +342,12 @@ impl WifiState {
 pub fn init_mdns(mdns: &mut EspMdns) -> anyhow::Result<()> {
     let txt = &[("board", "esp32c3"), ("version", env!("CARGO_PKG_VERSION"))];
     mdns.set_hostname("eclss").context("set mDNS hostname")?;
-    mdns.set_instance_name("Environmental Control and Life Support Systems")
+    mdns.set_instance_name("eclss")
         .context("set mDNS instance name")?;
     mdns.add_service(None, "_http", "_tcp", crate::http::HTTP_PORT, txt)
         .context("add HTTP mDNS service")?;
-    mdns.add_service(None, "_https", "_tcp", crate::http::HTTPS_PORT, txt)
-        .context("add HTTPS mDNS service")?;
+    // mdns.add_service(None, "_https", "_tcp", crate::http::HTTPS_PORT, txt)
+    //     .context("add HTTPS mDNS service")?;
     mdns.add_service(
         None,
         "_prometheus-http",
@@ -356,14 +356,14 @@ pub fn init_mdns(mdns: &mut EspMdns) -> anyhow::Result<()> {
         txt,
     )
     .context("add Prometheus HTTP mDNS service")?;
-    mdns.add_service(
-        None,
-        "_prometheus-https",
-        "_tcp",
-        crate::http::HTTPS_PORT,
-        txt,
-    )
-    .context("add Prometheus HTTPS mDNS service")?;
+    // mdns.add_service(
+    //     None,
+    //     "_prometheus-https",
+    //     "_tcp",
+    //     crate::http::HTTPS_PORT,
+    //     txt,
+    // )
+    // .context("add Prometheus HTTPS mDNS service")?;
 
     log::info!("advertising mDNS services");
 
