@@ -5,30 +5,58 @@ metrics format][prom].
 
 ## hardware
 
-- **microcontroller**: ESP32-C3; [QT Py ESP32-C3 from Adafruit](https://www.adafruit.com/product/5405).
-  could work with any ESP32-C3 board with a few source tweaks (which GPIO pins
-  are I2C).
-- **sensors**:
-  + **Sensirion SCD30** NDIR CO<sub>2</sub> sensor (with temperature and relative
-    humidity); [Adafruit breakout board](https://www.adafruit.com/product/4867).
-  + **Bosch BME680** temperature, barometric pressure, humidity, and VOC (MOX gas
-    sensor); [Adafruit breakout board](https://www.adafruit.com/product/3660). i
-    meant to get the slightly newer BME688 breakout but i clicked the
-    wrong one. BME688 would also work.
-  + **Plantower PMSA003I** particulate sensor (PLANNED); [Adafruit breakout
-    board](https://www.adafruit.com/product/4632). i haven't actually bought
-    this one yet.
-- **human interface**
-  + none yet! i'm thinking an e-ink display might be cool...
+### microcontroller
 
+ESP32-C3; i'm using the [QT Py ESP32-C3 from
+Adafruit](https://www.adafruit.com/product/5405).
+
+the software could easily be tweaked to work with any ESP32-C3 board with a few
+source changes (e.g. which pins are I<sub>2</sub>C). i picked the QT Py board
+because it's small and cute
+and has a [Stemma QT connector][stemmaqt].
+
+### sensors
+
+> **Note**
+> note that any given sensor is optional; the software gracefully handles
+> missing sensors and will continue to collect data from other sensors if one
+> isn't present on the I<sub>2</sub>C bus. of course, if you're missing a
+> particular sensor, you won't be collecting the data it measures :)
+
++ **Sensirion SCD30** NDIR CO<sub>2</sub> sensor (with temperature and relative
+  humidity); [Adafruit breakout board](https://www.adafruit.com/product/4867).
++ **Bosch BME680** temperature, barometric pressure, humidity, and VOC (MOX gas
+  sensor); [Adafruit breakout board](https://www.adafruit.com/product/3660). i
+  meant to get the slightly newer BME688 breakout but i clicked the
+  wrong one. BME688 would also work.
++ **Plantower PMSA003I** particulate sensor (PLANNED); [Adafruit breakout
+  board](https://www.adafruit.com/product/4632). i haven't actually bought
+  this one yet.
+
+### human interfaces
+
++ no display yet! i'm thinking an e-ink display might be cool...
++ i'm using the Neopixel LED on the QT Py board as a wifi status indicator.
+
+### misc
+
++ **TCA4307** hot-swap I<sub>2</sub>C buffer (OPTIONAL); [Adafruit breakout
+  board](https://www.adafruit.com/product/5159). this is *totally optional*;
+  it allows hot-swapping [Stemma QT][stemmaqt] sensors without the
+  I<sub>2</sub>C bus getting stuck. in practice, you're probably not going to
+  hot-swap the sensors, but my software supports hot-disconnection and
+  reconnection of sensors so it's a fun litle tech demo.
+
+[stemmaqt]: https://learn.adafruit.com/introducing-adafruit-stemma-qt/what-is-stemma-qt
 ## software
 
 - runs a WiFi access point (SSID: `eclss`) for configuration. connect to `eclss`
-  and open `http://192.168.71.1` to configure the SSID and password of a WiFi
+  and open `http://192.168.71.1` (or `eclss.local`, if your browser/device
+  resolves mDNS hostnames) to configure the SSID and password of a WiFi
   access point to connect to.
-- exposes an HTTP server on port 80 with the configuration interface at `/` and
+- exposes an HTTP server on port 80 with a web UI at `/` and
   [prometheus metrics][prom] at `/metrics`.
-- advertises the following mDNS services:
+- advertises the following mDNS services with the hostname `eclss.local`:
   + `_http._tcp`
   + `_https._tcp`
   + `_prometheus-http._tcp`
