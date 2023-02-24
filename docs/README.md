@@ -41,6 +41,7 @@ metrics format][prom].
 [pmsa003i]: https://www.adafruit.com/product/4632
 [TCA4307]: https://www.adafruit.com/product/5159
 [stemmaqt]: https://learn.adafruit.com/introducing-adafruit-stemma-qt/what-is-stemma-qt
+
 ## software
 
 - runs a WiFi access point (SSID: `eclss`) for configuration. connect to `eclss`
@@ -60,3 +61,7 @@ metrics format][prom].
 
 [prom]: https://prometheus.io/docs/instrumenting/exposition_formats/#text-based-format
 [`msiebuhr/prometheus-mdns-sd`]: https://github.com/msiebuhr/prometheus-mdns-sd
+
+## building and running it
+
+see [BUILD.md](../BUILD.md) for details.

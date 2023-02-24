@@ -1,4 +1,5 @@
 #![feature(type_alias_impl_trait)]
+#![doc = include_str!("../docs/README.md")]
 pub mod actor;
 pub mod atomic;
 pub mod bme680;
