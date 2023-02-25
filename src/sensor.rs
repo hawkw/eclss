@@ -20,9 +20,9 @@ pub trait Sensor: Sized {
 
     const NAME: &'static str;
 
-    fn bringup(i2c: &'static I2cBus) -> anyhow::Result<Self>;
+    fn bringup(i2c: &'static I2cBus, metrics: &'static SensorMetrics) -> anyhow::Result<Self>;
 
-    fn poll(&mut self, metrics: &SensorMetrics) -> anyhow::Result<()>;
+    fn poll(&mut self) -> anyhow::Result<()>;
 
     /// Returns the interval between calls to [`poll`].
     fn poll_interval(&self) -> Duration;
@@ -39,8 +39,6 @@ pub trait Sensor: Sized {
     /// - `Err(anyhow::Error)` if the sensor failed to perform the requested
     ///   behavior.
     fn handle_control_message(&mut self, msg: &Self::ControlMessage) -> anyhow::Result<()>;
-
-    fn incr_error(metrics: &SensorMetrics);
 }
 
 /// A sensor mangler for pollable I2C [`Sensor`]s.
@@ -64,14 +62,21 @@ impl Manager {
         self,
         ctrl_rx: Actor<S::ControlMessage, anyhow::Result<()>>,
     ) -> anyhow::Result<()> {
-        let (_, status) = STATUSES
-            .register(S::NAME, StatusCell::new())
-            .map_err(|_| anyhow::anyhow!("insufficient space in status map for {}", S::NAME))?;
+        let status = STATUSES
+            .register_default(S::NAME)
+            .ok_or_else(|| anyhow::anyhow!("insufficient space in status map for {}", S::NAME))?;
+        let errors = self
+            .metrics
+            .sensor_errors
+            .register(S::NAME)
+            .ok_or_else(|| {
+                anyhow::anyhow!("insufficient space in error metrics map for {}", S::NAME)
+            })?;
 
         let mut sensor = {
             loop {
                 let mut backoff = ExpBackoff::new(self.retry_backoff).with_target(S::NAME);
-                match S::bringup(self.busman) {
+                match S::bringup(self.busman, self.metrics) {
                     Ok(sensor) => {
                         log::info!(target: S::NAME, "successfully brought up {}!", S::NAME);
                         status.set_status(Status::Up);
@@ -83,7 +88,7 @@ impl Manager {
                             "failed to bring up {}: {error:?}; retrying in {backoff:?}...",
                             S::NAME
                         );
-                        S::incr_error(self.metrics);
+                        errors.incr();
                     }
                 }
 
@@ -109,7 +114,7 @@ impl Manager {
                             let res = sensor.handle_control_message(req);
                             if let Err(ref error) = res {
                                 log::warn!(target: S::NAME, "failed to respond to control message {req:?}: {error}");
-                                S::incr_error(self.metrics);
+                                errors.incr();
                             }
 
                             if let Err(_) = msg.respond(res) {
@@ -121,11 +126,11 @@ impl Manager {
                     continue;
                 },
 
-                _ = (&mut poll_wait).fuse() => match sensor.poll(self.metrics) {
+                _ = (&mut poll_wait).fuse() => match sensor.poll() {
                     Err(error) => {
                         log::warn!(target: S::NAME, "error polling {}: {error:?}", S::NAME);
                         status.set_status(Status::Down);
-                        S::incr_error(self.metrics);
+                        errors.incr();
                         poll_wait = backoff.wait();
                     }
                     Ok(()) => {

@@ -218,20 +218,23 @@
                 console.log(sensors);
                 for (const key in sensors) {
                     if (sensors.hasOwnProperty(key)) {
-                        const reading = sensors[key];
+                        const family = sensors[key];
                         const element = document.getElementById(key);
                         if (element) {
-                            if (reading.hasOwnProperty('value')) {
+                            const keys = Object.keys(family);
+                            if (keys.length === 1) {
                                 // single sensor reading
-                                let r = new Reading(key, reading.value);
+                                let sensorName = keys[0]
+                                let sensor = family[sensorName];
+                                let r = new Reading(keys, sensor.value);
                                 element.innerHTML = `<span class='${r.classes} has-text-centered'>${r.value}</span>`;
                             } else {
                                 let html = '';
-                                for (const sensorName in reading) {
-                                    if (reading.hasOwnProperty(sensorName)) {
-                                        let sensor = reading[sensorName];
+                                for (const sensorName of keys) {
+                                    if (family.hasOwnProperty(sensorName)) {
+                                        let sensor = family[sensorName];
                                         let r = new Reading(key, sensor.value);
-                                        html += `<span class='${r.classes} has-text-right'>${r.value}</span><span class='tag has-text-left'>${sensor.sensor}</span><br />`;
+                                        html += `<span class='${r.classes} has-text-right'>${r.value}</span><span class='tag has-text-left'>${sensorName}</span><br />`;
                                     }
                                 }
                                 element.innerHTML = html;

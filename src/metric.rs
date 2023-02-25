@@ -1,4 +1,7 @@
-use crate::atomic::{AtomicF32, AtomicU64, Ordering};
+use crate::{
+    atomic::{AtomicF32, AtomicU64, Ordering},
+    registry::RegistryMap,
+};
 use embedded_svc::io;
 use esp_idf_svc::systime::EspSystemTime;
 
@@ -10,35 +13,34 @@ pub struct MetricDef<'a> {
 }
 
 #[derive(Debug)]
-pub struct Metric<'a, S> {
+pub struct MetricFamily<'a, M, const LABELS: usize> {
     metric: MetricDef<'a>,
-    sensors: S,
+    sensors: RegistryMap<&'static str, M, LABELS>,
 }
 
-pub trait SensorMetric<'a> {
-    const TYPE: &'static str;
+pub type GaugeFamily<'a, const LABELS: usize> = MetricFamily<'a, Gauge, LABELS>;
+pub type CounterFamily<'a, const LABELS: usize> = MetricFamily<'a, Counter, LABELS>;
 
-    fn label(&self) -> &'a str;
+pub trait Metric {
+    const TYPE: &'static str;
 
     fn render_value<R: io::Write>(&self, writer: &mut R)
         -> Result<(), io::WriteFmtError<R::Error>>;
 }
 
 #[derive(Debug, serde::Serialize)]
-pub struct SensorGauge<'a> {
+pub struct Gauge {
     value: AtomicF32,
     timestamp: AtomicU64,
-    sensor: &'a str,
 }
 
 #[derive(Debug, serde::Serialize)]
-pub struct SensorCounter<'a> {
+pub struct Counter {
     value: AtomicU64,
     timestamp: AtomicU64,
-    sensor: &'a str,
 }
 
-// === impl Metric ===
+// === impl MetricDef ===
 
 impl<'a> MetricDef<'a> {
     pub const fn new(name: &'a str) -> Self {
@@ -63,29 +65,34 @@ impl<'a> MetricDef<'a> {
         }
     }
 
-    pub const fn with_sensors<S>(self, sensors: S) -> Metric<'a, S> {
-        Metric {
+    pub const fn with_sensors<M, const SENSORS: usize>(self) -> MetricFamily<'a, M, SENSORS> {
+        MetricFamily {
             metric: self,
-            sensors,
+            sensors: RegistryMap::new(),
         }
     }
 }
 
-// === impl Gauge ===
+// === impl MetricFamily ===
 
-impl<'a, S> Metric<'a, S> {
-    pub fn sensors(&self) -> &S {
+impl<'a, M, const LABELS: usize> MetricFamily<'a, M, LABELS>
+where
+    M: Metric + Default,
+{
+    pub fn register<'fam>(&'fam self, name: &'static str) -> Option<&'fam M> {
+        self.sensors.register_default(name)
+    }
+
+    pub fn sensors(&self) -> &RegistryMap<&'static str, M, LABELS> {
         &self.sensors
     }
 
-    pub fn render_prometheus<'metrics, M, R>(
+    pub fn render_prometheus<'metrics, R>(
         &'metrics self,
         writer: &mut R,
     ) -> Result<(), io::WriteFmtError<R::Error>>
     where
         R: io::Write,
-        M: SensorMetric<'a> + 'metrics,
-        &'metrics S: IntoIterator<Item = &'metrics M>,
     {
         let Self {
             sensors,
@@ -102,11 +109,9 @@ impl<'a, S> Metric<'a, S> {
             writeln!(writer, "# UNIT {name} {unit}")?;
         }
 
-        for sensor in sensors {
-            let sensor_name = sensor.label();
-
-            write!(writer, "{name}{{sensor=\"{sensor_name}\"}} ")?;
-            sensor.render_value(writer)?;
+        for (label, metric) in sensors.iter() {
+            write!(writer, "{name}{{sensor=\"{label}\"}} ")?;
+            metric.render_value(writer)?;
             writer.write(b"\n").map_err(io::WriteFmtError::Other)?;
         }
         writer.write(b"\n").map_err(io::WriteFmtError::Other)?;
@@ -115,14 +120,13 @@ impl<'a, S> Metric<'a, S> {
     }
 }
 
-// === impl SensorGauge ===
+// === impl Gauge ===
 
-impl<'a> SensorGauge<'a> {
-    pub const fn new(name: &'a str) -> Self {
+impl Gauge {
+    pub const fn new() -> Self {
         Self {
             value: AtomicF32::zero(),
             timestamp: AtomicU64::new(0),
-            sensor: name,
         }
     }
 
@@ -137,12 +141,8 @@ impl<'a> SensorGauge<'a> {
     }
 }
 
-impl<'a> SensorMetric<'a> for SensorGauge<'a> {
+impl Metric for Gauge {
     const TYPE: &'static str = "gauge";
-
-    fn label(&self) -> &'a str {
-        self.sensor
-    }
 
     fn render_value<R: io::Write>(
         &self,
@@ -157,23 +157,19 @@ impl<'a> SensorMetric<'a> for SensorGauge<'a> {
     }
 }
 
-impl<'metric, 'a> IntoIterator for &'a SensorGauge<'metric> {
-    type Item = &'a SensorGauge<'metric>;
-
-    type IntoIter = std::iter::Once<&'a SensorGauge<'metric>>;
-    fn into_iter(self) -> Self::IntoIter {
-        std::iter::once(self)
+impl Default for Gauge {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
-// === impl SensorCounter ===
+// === impl Counter ===
 
-impl<'a> SensorCounter<'a> {
-    pub const fn new(name: &'a str) -> Self {
+impl Counter {
+    pub const fn new() -> Self {
         Self {
             value: AtomicU64::new(0),
             timestamp: AtomicU64::new(0),
-            sensor: name,
         }
     }
 
@@ -188,12 +184,8 @@ impl<'a> SensorCounter<'a> {
     }
 }
 
-impl<'a> SensorMetric<'a> for SensorCounter<'a> {
+impl Metric for Counter {
     const TYPE: &'static str = "counter";
-
-    fn label(&self) -> &'a str {
-        self.sensor
-    }
 
     fn render_value<R: io::Write>(
         &self,
@@ -208,11 +200,8 @@ impl<'a> SensorMetric<'a> for SensorCounter<'a> {
     }
 }
 
-impl<'metric, 'a> IntoIterator for &'a SensorCounter<'metric> {
-    type Item = &'a SensorCounter<'metric>;
-
-    type IntoIter = std::iter::Once<&'a SensorCounter<'metric>>;
-    fn into_iter(self) -> Self::IntoIter {
-        std::iter::once(self)
+impl Default for Counter {
+    fn default() -> Self {
+        Self::new()
     }
 }

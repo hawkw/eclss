@@ -63,3 +63,9 @@ impl Serialize for StatusCell {
         self.status().serialize(serializer)
     }
 }
+
+impl Default for StatusCell {
+    fn default() -> Self {
+        Self::new()
+    }
+}

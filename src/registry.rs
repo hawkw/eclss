@@ -66,6 +66,13 @@ impl<T, const SIZE: usize> Registry<T, SIZE> {
         Ok(init)
     }
 
+    pub fn register_default<'registry>(&'registry self) -> Option<&'registry T>
+    where
+        T: Default,
+    {
+        self.register(T::default()).ok()
+    }
+
     #[must_use]
     pub fn iter(&self) -> impl Iterator<Item = &T> {
         self.values[..self.len()].iter().filter_map(Slot::get)
@@ -123,13 +130,37 @@ impl<K, V, const SIZE: usize> RegistryMap<K, V, SIZE> {
         Self(Registry::new())
     }
 
-    #[inline]
-    pub fn register<'registry>(
+    pub fn register_with<'registry>(
         &'registry self,
         key: K,
-        value: V,
-    ) -> Result<&'registry (K, V), (K, V)> {
-        self.0.register((key, value))
+        init: impl FnOnce() -> V,
+    ) -> Option<&'registry V>
+    where
+        K: PartialEq,
+    {
+        for (k, v) in self.iter() {
+            // already exists!
+            if &key == k {
+                return Some(v);
+            }
+        }
+
+        self.0.register((key, init())).ok().map(|(_, val)| val)
+    }
+
+    pub fn register_default<'registry>(&'registry self, key: K) -> Option<&'registry V>
+    where
+        K: PartialEq,
+        V: Default,
+    {
+        self.register_with(key, V::default)
+    }
+
+    pub fn register<'registry>(&'registry self, key: K, value: V) -> Option<&'registry V>
+    where
+        K: PartialEq,
+    {
+        self.register_with(key, move || value)
     }
 
     #[must_use]

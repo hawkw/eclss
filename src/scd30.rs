@@ -1,10 +1,13 @@
-use crate::{sensor::Sensor, I2cBus, I2cRef, SensorMetrics};
+use crate::{metric::Gauge, sensor::Sensor, I2cBus, I2cRef, SensorMetrics};
 use anyhow::anyhow;
 use esp_idf_hal::{delay::Ets, i2c::I2cError};
 
 pub struct Scd30 {
     sensor: sensor_scd30::Scd30<I2cRef<'static>, Ets, I2cError>,
     measurement_interval_secs: u16,
+    co2_gauge: &'static Gauge,
+    temp_gauge: &'static Gauge,
+    humidity_gauge: &'static Gauge,
 }
 
 #[derive(Debug, Clone)]
@@ -26,7 +29,7 @@ impl Sensor for Scd30 {
 
     const NAME: &'static str = "SCD30";
 
-    fn bringup(busman: &'static I2cBus) -> anyhow::Result<Self> {
+    fn bringup(busman: &'static I2cBus, metrics: &'static SensorMetrics) -> anyhow::Result<Self> {
         const INITIAL_INTERVAL_SECS: u16 = 2;
         log::debug!("connecting to SCD30");
 
@@ -38,10 +41,6 @@ impl Sensor for Scd30 {
             .firmware_version()
             .map_err(|error| anyhow!("failed to read SCD30 firmware version: {error:?}"))?;
         log::info!("connected to SCD30; firmware: {firmware}");
-
-        // println!("reset: {:?}", scd30.soft_reset());
-        // retry(10, || scd30.set_afc(false)).expect("failed to enable automatic calibration mode");
-        // println!("enabled SCD30 automatic calibration");
 
         sensor
             .set_measurement_interval(INITIAL_INTERVAL_SECS)
@@ -57,10 +56,22 @@ impl Sensor for Scd30 {
         Ok(Self {
             sensor,
             measurement_interval_secs: INITIAL_INTERVAL_SECS,
+            co2_gauge: metrics
+                .co2
+                .register(Self::NAME)
+                .expect("couldn't register gauge"),
+            temp_gauge: metrics
+                .temp
+                .register("SHT31")
+                .expect("couldn't register gauge"),
+            humidity_gauge: metrics
+                .humidity
+                .register("SHT32")
+                .expect("couldn't register gauge"),
         })
     }
 
-    fn poll(&mut self, metrics: &SensorMetrics) -> anyhow::Result<()> {
+    fn poll(&mut self) -> anyhow::Result<()> {
         // Keep looping until ready
         while !self
             .sensor
@@ -73,9 +84,9 @@ impl Sensor for Scd30 {
             .sensor
             .read_data()
             .map_err(|err| anyhow!("error reading data: {err:?}"))?;
-        metrics.co2.sensors().set_value(co2);
-        metrics.humidity.sensors().scd30.set_value(rh);
-        metrics.temp.sensors().scd30.set_value(temp);
+        self.co2_gauge.set_value(co2);
+        self.humidity_gauge.set_value(rh);
+        self.temp_gauge.set_value(temp);
         log::info!("CO2: {co2:>8.3} ppm, Temp: {temp:>3.3} \u{00B0}C, Humidity: {rh:>3.3}%");
 
         Ok(())
@@ -83,10 +94,6 @@ impl Sensor for Scd30 {
 
     fn poll_interval(&self) -> embassy_time::Duration {
         embassy_time::Duration::from_secs(self.measurement_interval_secs as u64)
-    }
-
-    fn incr_error(metrics: &SensorMetrics) {
-        metrics.sensor_errors.sensors().scd30.incr();
     }
 
     fn handle_control_message(&mut self, msg: &Self::ControlMessage) -> anyhow::Result<()> {
