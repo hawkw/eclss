@@ -1,8 +1,10 @@
-use crate::{actor::Actor, retry::ExpBackoff, I2cBus, SensorMetrics};
+use crate::{actor::Actor, registry::RegistryMap, retry::ExpBackoff, I2cBus, SensorMetrics};
 use embassy_time::{Duration, Timer};
 use futures::{select, FutureExt};
 use std::fmt;
 
+mod status;
+pub use self::status::{Status, StatusCell};
 /// Represents a pollable I2C sensor.
 pub trait Sensor: Sized {
     /// Messages sent to control the behavior of this sensor.
@@ -55,17 +57,24 @@ pub struct Manager {
     pub retry_backoff: Duration,
 }
 
+pub static STATUSES: RegistryMap<&'static str, StatusCell, 16> = RegistryMap::new();
+
 impl Manager {
     pub async fn run<S: Sensor>(
         self,
         ctrl_rx: Actor<S::ControlMessage, anyhow::Result<()>>,
     ) -> anyhow::Result<()> {
+        let (_, status) = STATUSES
+            .register(S::NAME, StatusCell::new())
+            .map_err(|_| anyhow::anyhow!("insufficient space in status map for {}", S::NAME))?;
+
         let mut sensor = {
             loop {
                 let mut backoff = ExpBackoff::new(self.retry_backoff).with_target(S::NAME);
                 match S::bringup(self.busman) {
                     Ok(sensor) => {
                         log::info!(target: S::NAME, "successfully brought up {}!", S::NAME);
+                        status.set_status(Status::Up);
                         break sensor;
                     }
                     Err(error) => {
@@ -115,6 +124,7 @@ impl Manager {
                 _ = (&mut poll_wait).fuse() => match sensor.poll(self.metrics) {
                     Err(error) => {
                         log::warn!(target: S::NAME, "error polling {}: {error:?}", S::NAME);
+                        status.set_status(Status::Down);
                         S::incr_error(self.metrics);
                         poll_wait = backoff.wait();
                     }
@@ -123,6 +133,7 @@ impl Manager {
                         // reset the backoff now that the sensor is alive again.
                         backoff.reset();
                         poll_wait = Timer::after(sensor.poll_interval());
+                        status.set_status(Status::Up);
                     }
                 }
             }

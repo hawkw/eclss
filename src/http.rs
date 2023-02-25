@@ -1,4 +1,4 @@
-use crate::{actor, net, scd30, SensorMetrics};
+use crate::{actor, net, scd30, sensor, SensorMetrics};
 use anyhow::Context;
 use embedded_svc::{
     http::{
@@ -49,6 +49,10 @@ pub fn start_server(
         .context("adding GET /metrics handler")?
         .fn_handler("/sensors.json", Method::Get, move |req| {
             serve_json(req, metrics)
+        })
+        .context("adding GET /sensors.json handler")?
+        .fn_handler("/sensors/status.json", Method::Get, move |req| {
+            serve_json(req, &sensor::STATUSES)
         })
         .context("adding GET /sensors.json handler")?
         .fn_handler("/sensors/co2/calibrate", Method::Post, move |mut req| {
