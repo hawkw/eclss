@@ -31,6 +31,8 @@ impl Sensor for Scd30 {
 
     fn bringup(busman: &'static I2cBus, metrics: &'static SensorMetrics) -> anyhow::Result<Self> {
         const INITIAL_INTERVAL_SECS: u16 = 2;
+        const SHT31: &'static str = "SHT31";
+
         log::debug!("connecting to SCD30");
 
         let i2c = busman.acquire_i2c();
@@ -62,11 +64,11 @@ impl Sensor for Scd30 {
                 .expect("couldn't register gauge"),
             temp_gauge: metrics
                 .temp
-                .register("SHT31")
+                .register(SHT31)
                 .expect("couldn't register gauge"),
             humidity_gauge: metrics
                 .humidity
-                .register("SHT32")
+                .register(SHT31)
                 .expect("couldn't register gauge"),
         })
     }
