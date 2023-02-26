@@ -24,7 +24,12 @@
       in {
         devShell = pkgs.mkShell rec {
           LIBCLANG_PATH = "${pkgs.llvmPackages.libclang.lib}/lib";
+
+          SSL_CERT_FILE = "${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt";
+          GIT_SSL_CAINFO = "${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt";
+          CURL_CA_BUNDLE = "${pkgs.cacert}/etc/ca-bundle.crt";
           buildInputs = with pkgs; [
+            cacert
             # rust tools
             rustup
             rust-analyzer
