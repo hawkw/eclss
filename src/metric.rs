@@ -2,7 +2,7 @@ use crate::{
     atomic::{AtomicF32, AtomicU64, Ordering},
     registry::RegistryMap,
 };
-use embedded_svc::io;
+use core::fmt;
 use esp_idf_svc::systime::EspSystemTime;
 
 #[derive(Debug)]
@@ -22,11 +22,10 @@ pub type GaugeFamily<'a, const METRICS: usize> = MetricFamily<'a, Gauge, METRICS
 pub type CounterFamily<'a, const METRICS: usize> = MetricFamily<'a, Counter, METRICS>;
 pub type Labels<'a> = &'a [(&'a str, &'a str)];
 
-pub trait Metric {
+pub trait Metric: Default {
     const TYPE: &'static str;
 
-    fn render_value<R: io::Write>(&self, writer: &mut R)
-        -> Result<(), io::WriteFmtError<R::Error>>;
+    fn fmt_metric<F: fmt::Write>(&self, writer: &mut F) -> fmt::Result;
 }
 
 #[derive(Debug, serde::Serialize)]
@@ -66,7 +65,7 @@ impl<'a> MetricDef<'a> {
         }
     }
 
-    pub const fn with_sensors<M, const SENSORS: usize>(self) -> MetricFamily<'a, M, SENSORS> {
+    pub const fn with_metrics<M, const METRICS: usize>(self) -> MetricFamily<'a, M, METRICS> {
         MetricFamily {
             def: self,
             metrics: RegistryMap::new(),
@@ -78,7 +77,7 @@ impl<'a> MetricDef<'a> {
 
 impl<'a, M, const METRICS: usize> MetricFamily<'a, M, METRICS>
 where
-    M: Metric + Default,
+    M: Metric,
 {
     pub fn register<'fam>(&'fam self, labels: Labels<'a>) -> Option<&'fam M> {
         self.metrics.register_default(labels)
@@ -88,13 +87,7 @@ where
         &self.metrics
     }
 
-    pub fn render_prometheus<'metrics, R>(
-        &'metrics self,
-        writer: &mut R,
-    ) -> Result<(), io::WriteFmtError<R::Error>>
-    where
-        R: io::Write,
-    {
+    pub fn fmt_metric(&self, writer: &mut impl fmt::Write) -> fmt::Result {
         let Self {
             metrics: sensors,
             def: MetricDef { name, help, unit },
@@ -111,9 +104,7 @@ where
         }
 
         for (labels, metric) in sensors.iter() {
-            writer
-                .write(name.as_bytes())
-                .map_err(io::WriteFmtError::Other)?;
+            writer.write_str(name)?;
 
             let mut labels = labels.iter();
             if let Some(&(k, v)) = labels.next() {
@@ -123,15 +114,24 @@ where
                     write!(writer, ",{k}=\"{v}\"")?;
                 }
 
-                writer.write(b"}").map_err(io::WriteFmtError::Other)?;
+                writer.write_char('}')?;
             }
 
-            metric.render_value(writer)?;
-            writer.write(b"\n").map_err(io::WriteFmtError::Other)?;
+            metric.fmt_metric(writer)?;
+            writer.write_char('\n')?;
         }
-        writer.write(b"\n").map_err(io::WriteFmtError::Other)?;
+        writer.write_char('\n')?;
 
         Ok(())
+    }
+}
+
+impl<'a, M, const METRICS: usize> fmt::Display for MetricFamily<'a, M, METRICS>
+where
+    M: Metric,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.fmt_metric(f)
     }
 }
 
@@ -159,10 +159,7 @@ impl Gauge {
 impl Metric for Gauge {
     const TYPE: &'static str = "gauge";
 
-    fn render_value<R: io::Write>(
-        &self,
-        writer: &mut R,
-    ) -> Result<(), io::WriteFmtError<R::Error>> {
+    fn fmt_metric<F: fmt::Write>(&self, writer: &mut F) -> fmt::Result {
         write!(
             writer,
             "{}",
@@ -202,10 +199,7 @@ impl Counter {
 impl Metric for Counter {
     const TYPE: &'static str = "counter";
 
-    fn render_value<R: io::Write>(
-        &self,
-        writer: &mut R,
-    ) -> Result<(), io::WriteFmtError<R::Error>> {
+    fn fmt_metric<F: fmt::Write>(&self, writer: &mut F) -> fmt::Result {
         write!(
             writer,
             "{}",
@@ -218,5 +212,63 @@ impl Metric for Counter {
 impl Default for Counter {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn gauge() {
+        let family = MetricDef::new("test_gauge")
+            .with_help("a test gauge")
+            .with_unit("tests")
+            .with_metrics::<2>();
+        let metric1 = family
+            .register(&[("metric", "1"), ("label2", "foo")])
+            .expect("metric 1 must register");
+        metric1.set_value(10.0);
+
+        let metric2 = family
+            .register(&[("metric", "2"), ("label2", "bar")])
+            .expect("metric 2 must register");
+        metric2.set_value(22.2);
+
+        let expected = "\
+        # TYPE test_gauge gauge\n\
+        # HELP test_gauge a test gauge\n\
+        # UNIT test_gauge tests\n\
+        test_gauge{metric=\"1\",label2=\"foo\"} 10.0\n\
+        test_gauge{metric=\"2\",label2=\"bar\"} 22.2\n\
+        ";
+        assert_eq!(family.to_string(), expected);
+    }
+
+    #[test]
+    fn counter() {
+        let family = MetricDef::new("test_counter")
+            .with_help("a test counter")
+            .with_unit("tests")
+            .with_metrics::<2>();
+        let metric1 = family
+            .register(&[("metric", "1"), ("label2", "foo")])
+            .expect("metric 1 must register");
+        metric1.incr();
+
+        let metric2 = family
+            .register(&[("metric", "2"), ("label2", "bar")])
+            .expect("metric 2 must register");
+        metric2.incr();
+        metric2.incr();
+
+        let expected = "\
+        # TYPE test_counter counter\n\
+        # HELP test_counter a test counter\n\
+        # UNIT test_counter tests\n\
+        test_counter{metric=\"1\",label2=\"foo\"} 1\n\
+        test_counter{metric=\"2\",label2=\"bar\"} 2\n\
+        ";
+        assert_eq!(family.to_string(), expected);
     }
 }

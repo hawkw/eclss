@@ -15,9 +15,8 @@ pub mod ws2812;
 pub type I2cRef<'bus> = shared_bus::I2cProxy<'bus, SharedI2c>;
 pub type I2cBus = shared_bus::BusManager<SharedI2c>;
 pub type SharedI2c = std::sync::Mutex<esp_idf_hal::i2c::I2cDriver<'static>>;
-pub use self::retry::Retry;
 
-use embedded_svc::io;
+use std::fmt;
 
 #[derive(Debug)]
 pub struct SensorMetrics {
@@ -35,40 +34,37 @@ impl SensorMetrics {
             temp: metric::MetricDef::new("temperature_degrees_celcius")
                 .with_help("Temperature in degrees Celcius.")
                 .with_unit("celcius")
-                .with_sensors(),
+                .with_metrics(),
             co2: metric::MetricDef::new("co2_ppm")
                 .with_help("CO2 in parts per million (ppm).")
                 .with_unit("ppm")
-                .with_sensors(),
+                .with_metrics(),
 
             humidity: metric::MetricDef::new("humidity_percent")
                 .with_help("Relative humidity (RH) percentage.")
                 .with_unit("percent")
-                .with_sensors(),
+                .with_metrics(),
             pressure: metric::MetricDef::new("pressure_hpa")
                 .with_help("Barometric pressure, in hectopascals (hPa).")
                 .with_unit("hPa")
-                .with_sensors(),
+                .with_metrics(),
             gas_resistance: metric::MetricDef::new("gas_resistance_ohms")
                 .with_help("BME680 VOC sensor resistance, in Ohms.")
                 .with_unit("Ohms")
-                .with_sensors(),
+                .with_metrics(),
             sensor_errors: metric::MetricDef::new("sensor_error_count")
                 .with_help("Count of I2C errors that occurred while talking to a sensor")
-                .with_sensors(),
+                .with_metrics(),
         }
     }
 
-    pub fn render_prometheus<W: io::Write>(
-        &self,
-        writer: &mut W,
-    ) -> Result<(), io::WriteFmtError<W::Error>> {
-        self.temp.render_prometheus(writer)?;
-        self.co2.render_prometheus(writer)?;
-        self.humidity.render_prometheus(writer)?;
-        self.pressure.render_prometheus(writer)?;
-        self.gas_resistance.render_prometheus(writer)?;
-        self.sensor_errors.render_prometheus(writer)?;
+    pub fn fmt_metrics(&self, f: &mut impl fmt::Write) -> fmt::Result {
+        self.temp.fmt_metric(f)?;
+        self.co2.fmt_metric(f)?;
+        self.humidity.fmt_metric(f)?;
+        self.pressure.fmt_metric(f)?;
+        self.gas_resistance.fmt_metric(f)?;
+        self.sensor_errors.fmt_metric(f)?;
         Ok(())
     }
 }
@@ -84,5 +80,11 @@ impl serde::Serialize for SensorMetrics {
         state.serialize_field("pressure", &self.pressure.metrics())?;
         state.serialize_field("gas_resistance", &self.gas_resistance.metrics())?;
         state.end()
+    }
+}
+
+impl fmt::Display for SensorMetrics {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.fmt_metrics(f)
     }
 }

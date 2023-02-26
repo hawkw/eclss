@@ -42,7 +42,7 @@ pub fn start_server(
         .fn_handler("/metrics", Method::Get, move |req| {
             log::debug!("handling GET /metrics request...");
             let mut rsp = rsp_ok(req, "text/plain; version=0.0.4")?;
-            metrics.render_prometheus(&mut rsp)?;
+            write!(rsp, "{metrics}")?;
             log::info!("metrics scrape OK!");
             Ok(())
         })
