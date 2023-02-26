@@ -34,16 +34,16 @@ impl Sensor for Bme680 {
             sensor,
             pressure_gauge: metrics
                 .pressure
-                .register(Self::NAME)
+                .register(Self::LABELS)
                 .expect("can't register"),
-            temp_gauge: metrics.temp.register(Self::NAME).expect("can't register"),
+            temp_gauge: metrics.temp.register(Self::LABELS).expect("can't register"),
             humidity_gauge: metrics
                 .humidity
-                .register(Self::NAME)
+                .register(Self::LABELS)
                 .expect("can't register"),
             gas_resistance_gauge: metrics
                 .gas_resistance
-                .register(Self::NAME)
+                .register(Self::LABELS)
                 .expect("can't register"),
         })
     }

@@ -78,11 +78,11 @@ impl serde::Serialize for SensorMetrics {
         use serde::ser::SerializeStruct;
 
         let mut state = serializer.serialize_struct("SensorMetrics", 5)?;
-        state.serialize_field("temp", &self.temp.sensors())?;
-        state.serialize_field("co2", &self.co2.sensors())?;
-        state.serialize_field("humidity", &self.humidity.sensors())?;
-        state.serialize_field("pressure", &self.pressure.sensors())?;
-        state.serialize_field("gas_resistance", &self.gas_resistance.sensors())?;
+        state.serialize_field("temp", &self.temp.metrics())?;
+        state.serialize_field("co2", &self.co2.metrics())?;
+        state.serialize_field("humidity", &self.humidity.metrics())?;
+        state.serialize_field("pressure", &self.pressure.metrics())?;
+        state.serialize_field("gas_resistance", &self.gas_resistance.metrics())?;
         state.end()
     }
 }

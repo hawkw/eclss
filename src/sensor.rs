@@ -1,4 +1,6 @@
-use crate::{actor::Actor, registry::RegistryMap, retry::ExpBackoff, I2cBus, SensorMetrics};
+use crate::{
+    actor::Actor, metric, registry::RegistryMap, retry::ExpBackoff, I2cBus, SensorMetrics,
+};
 use embassy_time::{Duration, Timer};
 use futures::{select, FutureExt};
 use std::fmt;
@@ -19,6 +21,7 @@ pub trait Sensor: Sized {
     type ControlMessage: fmt::Debug;
 
     const NAME: &'static str;
+    const LABELS: metric::Labels<'static> = &[("sensor", Self::NAME)];
 
     fn bringup(i2c: &'static I2cBus, metrics: &'static SensorMetrics) -> anyhow::Result<Self>;
 
@@ -68,7 +71,7 @@ impl Manager {
         let errors = self
             .metrics
             .sensor_errors
-            .register(S::NAME)
+            .register(S::LABELS)
             .ok_or_else(|| {
                 anyhow::anyhow!("insufficient space in error metrics map for {}", S::NAME)
             })?;

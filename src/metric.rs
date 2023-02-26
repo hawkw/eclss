@@ -13,13 +13,14 @@ pub struct MetricDef<'a> {
 }
 
 #[derive(Debug)]
-pub struct MetricFamily<'a, M, const LABELS: usize> {
-    metric: MetricDef<'a>,
-    sensors: RegistryMap<&'static str, M, LABELS>,
+pub struct MetricFamily<'a, M, const METRICS: usize> {
+    def: MetricDef<'a>,
+    metrics: RegistryMap<Labels<'a>, M, METRICS>,
 }
 
-pub type GaugeFamily<'a, const LABELS: usize> = MetricFamily<'a, Gauge, LABELS>;
-pub type CounterFamily<'a, const LABELS: usize> = MetricFamily<'a, Counter, LABELS>;
+pub type GaugeFamily<'a, const METRICS: usize> = MetricFamily<'a, Gauge, METRICS>;
+pub type CounterFamily<'a, const METRICS: usize> = MetricFamily<'a, Counter, METRICS>;
+pub type Labels<'a> = &'a [(&'a str, &'a str)];
 
 pub trait Metric {
     const TYPE: &'static str;
@@ -67,24 +68,24 @@ impl<'a> MetricDef<'a> {
 
     pub const fn with_sensors<M, const SENSORS: usize>(self) -> MetricFamily<'a, M, SENSORS> {
         MetricFamily {
-            metric: self,
-            sensors: RegistryMap::new(),
+            def: self,
+            metrics: RegistryMap::new(),
         }
     }
 }
 
 // === impl MetricFamily ===
 
-impl<'a, M, const LABELS: usize> MetricFamily<'a, M, LABELS>
+impl<'a, M, const METRICS: usize> MetricFamily<'a, M, METRICS>
 where
     M: Metric + Default,
 {
-    pub fn register<'fam>(&'fam self, name: &'static str) -> Option<&'fam M> {
-        self.sensors.register_default(name)
+    pub fn register<'fam>(&'fam self, labels: Labels<'a>) -> Option<&'fam M> {
+        self.metrics.register_default(labels)
     }
 
-    pub fn sensors(&self) -> &RegistryMap<&'static str, M, LABELS> {
-        &self.sensors
+    pub fn metrics(&self) -> &RegistryMap<Labels<'a>, M, METRICS> {
+        &self.metrics
     }
 
     pub fn render_prometheus<'metrics, R>(
@@ -95,8 +96,8 @@ where
         R: io::Write,
     {
         let Self {
-            sensors,
-            metric: MetricDef { name, help, unit },
+            metrics: sensors,
+            def: MetricDef { name, help, unit },
         } = self;
 
         writeln!(writer, "# TYPE {name} {}", M::TYPE)?;
@@ -109,8 +110,22 @@ where
             writeln!(writer, "# UNIT {name} {unit}")?;
         }
 
-        for (label, metric) in sensors.iter() {
-            write!(writer, "{name}{{sensor=\"{label}\"}} ")?;
+        for (labels, metric) in sensors.iter() {
+            writer
+                .write(name.as_bytes())
+                .map_err(io::WriteFmtError::Other)?;
+
+            let mut labels = labels.iter();
+            if let Some(&(k, v)) = labels.next() {
+                write!(writer, "{{{k}=\"{v}\"")?;
+
+                for &(k, v) in labels {
+                    write!(writer, ",{k}=\"{v}\"")?;
+                }
+
+                writer.write(b"}").map_err(io::WriteFmtError::Other)?;
+            }
+
             metric.render_value(writer)?;
             writer.write(b"\n").map_err(io::WriteFmtError::Other)?;
         }
