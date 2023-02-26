@@ -224,7 +224,7 @@ mod tests {
         let family = MetricDef::new("test_gauge")
             .with_help("a test gauge")
             .with_unit("tests")
-            .with_metrics::<2>();
+            .with_metrics::<Gauge, 2>();
         let metric1 = family
             .register(&[("metric", "1"), ("label2", "foo")])
             .expect("metric 1 must register");
@@ -250,7 +250,7 @@ mod tests {
         let family = MetricDef::new("test_counter")
             .with_help("a test counter")
             .with_unit("tests")
-            .with_metrics::<2>();
+            .with_metrics::<Counter, 2>();
         let metric1 = family
             .register(&[("metric", "1"), ("label2", "foo")])
             .expect("metric 1 must register");
