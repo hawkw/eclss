@@ -48,13 +48,14 @@ pub fn start_server(
         })
         .context("adding GET /metrics handler")?
         .fn_handler("/sensors.json", Method::Get, move |req| {
+            log::debug!("handling GET /metrics request...");
             serve_json(req, metrics)
         })
         .context("adding GET /sensors.json handler")?
         .fn_handler("/sensors/status.json", Method::Get, move |req| {
             serve_json(req, &sensor::STATUSES)
         })
-        .context("adding GET /sensors.json handler")?
+        .context("adding GET /sensors/status.json handler")?
         .fn_handler("/sensors/co2/calibrate", Method::Post, move |mut req| {
             // TODO(eliza): this needs to be authed...
 
@@ -139,10 +140,18 @@ fn serve_json<C: Connection>(req: Request<C>, json: &impl Serialize) -> HandlerR
     }
     */
 
-    let mut rsp = rsp_ok(req, content_type::JSON)?;
-    // TODO(eliza): don't allocate here...
-    let json = serde_json::to_string_pretty(&json)?;
-    rsp.write_all(json.as_bytes())?;
+    // TODO(eliza): don't allocate here
+    match serde_json::to_string_pretty(&json) {
+        Ok(json) => {
+            log::info!("responding with JSON: {json}");
+            let mut rsp = rsp_ok(req, content_type::JSON)?;
+            rsp.write_all(json.as_bytes())?;
+        }
+        Err(error) => {
+            log::error!("JSON serialization error: {error}");
+            send_internal_error(req, format_args!("JSON serialization error: {error}"))?;
+        }
+    }
     Ok(())
 }
 
