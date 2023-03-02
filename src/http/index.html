@@ -133,13 +133,22 @@
             }
 
             onError(error) {
-                const message = error.toString();
+                let message;
+                if (error instanceof Error) {
+                    message = error.message;
+                    if (error.hasOwnProperty('cause')) {
+                        message = message + '; ' + error.cause.toString();
+                    }
+                } else {
+                    message = error.toString();
+                }
+
                 if (this.errors.hasOwnProperty(message)) {
                     console.log(`"${this.context}"`, 'already displaying error', error)
                     return;
                 }
 
-                console.error(`Error ${this.context}: `, message);
+                console.error(`Error ${this.context}: `, error);
 
                 const notif = new Notif(this.context, message)
                     .withError()
@@ -158,14 +167,57 @@
             signal
         }
 
+        async function handleFetchErrors(response) {
+            const message = "message";
+            // is the response successful?
+            if (response.ok) {
+                return response;
+            }
+
+            let error = new Error(`${response.statusText} from board`);
+            error.name = '';
+
+            // okay, does the response have JSON?
+            if (typeof response.json === "function") {
+                const json = await response.json();
+                if (json.hasOwnProperty(message)) {
+                    // the JSON has a message, so include that in the error...
+                    error.message = error.message + `: "${json[message]}"`;
+                }
+            }
+
+            throw error;
+        }
+
+        async function fetchJson(uri, options = {}) {
+            const mime = 'application/json';
+            const accept = 'Accept';
+
+            if (!options.hasOwnProperty('headers')) {
+                options['headers'] = {};
+            }
+
+            options.headers['Accept'] = 'application/json';
+            try {
+                const response = await fetch(uri, options);
+                console.log(`fetch ${uri}; response: `, response);
+                const body = await handleFetchErrors(response);
+                const json = await body.json();
+                console.log(`fetch ${uri}; json: `, json);
+                return json;
+            } catch (error) {
+                console.warn(`fetch ${uri}; error: `, error);
+                throw new Error(`fetching ${uri} failed`, { cause: error });
+            }
+        }
+
         let sensorErrors = new ErrorManager("updating sensor readings");
         let ssidErrors = new ErrorManager("updating WiFi SSIDs");
         let configErrors = new ErrorManager("updating configuration");
 
         async function updateSsids() {
             try {
-                const ssids = await fetch('/wifi/ssids.json')
-                    .then((response) => response.json());
+                const ssids = await fetchJson('/wifi/ssids.json');
                 console.log(ssids);
                 const ssidSelect = document.getElementById('ssids');
                 ssids.forEach(ssid => {
@@ -206,14 +258,11 @@
             try {
                 console.log("trying to fetch sensor readings...");
 
-                const sensors = await fetch('/sensors.json', {
+                const sensors = await fetchJson('/sensors.json', {
                     // set a timeout for fetching sensor data so that we don't leave it
                     // running eternally when the board is dead.
                     signal: AbortSignal.timeout(sensorFetchDuration),
-                    headers: {
-                        'Accept': 'application/json',
-                    },
-                }).then((response) => response.json());
+                });
 
                 console.log(sensors);
                 for (const key in sensors) {
