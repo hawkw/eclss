@@ -187,7 +187,7 @@ fn send_json_rsp<C: Connection, T: Serialize + fmt::Display>(
     json: JsonResponse<T>,
 ) -> HandlerResult {
     log::info!(
-        "responding with {} {} {}",
+        "responding with {} {}: {}",
         json.code,
         json.status,
         json.message
