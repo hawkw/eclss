@@ -41,7 +41,8 @@ jobs:
       - name: rust toolchain
         run: rustup show active-toolchain; cargo --version; rustc --version
       - run: cargo install ldproxy
-      - run: cargo build --message-format=json | cargo-action-fmt
+      - name: cargo build
+        run: cargo build --message-format=json | cargo-action-fmt
 
   rustfmt:
     runs-on: ubuntu-latest
@@ -50,5 +51,5 @@ jobs:
       - uses: olix0r/cargo-action-fmt@ee1ef42932e44794821dab57ef1bf7a73df8b21f
       - name: rust toolchain
         run: rustup show active-toolchain; cargo --version; rustc --version
-      - name: cargo clippy
-      - run: cargo fmt --check --message-format=json | cargo-action-fmt
+      - name: cargo fmt
+        run: cargo fmt --check --message-format=json | cargo-action-fmt
