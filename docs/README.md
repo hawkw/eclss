@@ -1,7 +1,16 @@
-# Environmental Control and Life Support Systems (ECLSS)
+# Eliza's Custom Life Support System (ECLSS)
 
-a li'l IoT environmental sensor node that exposes data in [the prometheus
-metrics format][prom].
+a fast, cheap, and out of control IoT environmental sensor node.
+
+## what is it?
+
+ECLSS (the [NASA acronym for "Environmental Control and Life Support
+Systems"][nasa]) is an ESP32-based implementation of a WiFi-enabled
+environmental & air quality sensor node that reads data from a variety of
+I<sub>2</sub>C sensors and exposes data in [the prometheus metrics
+format][prom].
+
+[nasa]: https://www.nasa.gov/centers/marshall/history/eclss.html
 
 ## hardware
 
