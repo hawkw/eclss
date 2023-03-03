@@ -1,5 +1,7 @@
 # Eliza's Custom Life Support System (ECLSS)
 
+[![CI](https://github.com/hawkw/eclss-idf/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/hawkw/eclss-idf/actions/workflows/ci.yml)
+
 a fast, cheap, and out of control IoT environmental sensor node.
 
 ## what is it?
