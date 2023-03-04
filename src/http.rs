@@ -43,7 +43,7 @@ pub fn start_server(
             log::debug!("handling GET /metrics request...");
             let mut rsp = rsp_ok(req, "text/plain; version=0.0.4")?;
             write!(rsp, "{metrics}")?;
-            log::info!("metrics scrape OK!");
+            log::debug!("metrics scrape OK!");
             Ok(())
         })
         .context("adding GET /metrics handler")?
@@ -143,7 +143,7 @@ fn serve_json<C: Connection>(req: Request<C>, json: &impl Serialize) -> HandlerR
     // TODO(eliza): don't allocate here
     match serde_json::to_string_pretty(&json) {
         Ok(json) => {
-            log::info!("responding with JSON: {json}");
+            log::debug!("responding with JSON: {json}");
             let mut rsp = rsp_ok(req, content_type::JSON)?;
             rsp.write_all(json.as_bytes())?;
         }
