@@ -1,5 +1,9 @@
 use crate::{
-    actor::Actor, metric, registry::RegistryMap, retry::ExpBackoff, I2cBus, SensorMetrics,
+    actor::Actor,
+    metrics::{self, SensorMetrics},
+    registry::RegistryMap,
+    retry::ExpBackoff,
+    I2cBus,
 };
 use embassy_time::{Duration, Timer};
 use futures::{select, FutureExt};
@@ -21,7 +25,7 @@ pub trait Sensor: Sized {
     type ControlMessage: fmt::Debug;
 
     const NAME: &'static str;
-    const LABELS: metric::Labels<'static> = &[("sensor", Self::NAME)];
+    const LABEL: metrics::SensorLabel = metrics::SensorLabel(Self::NAME);
 
     fn bringup(i2c: &'static I2cBus, metrics: &'static SensorMetrics) -> anyhow::Result<Self>;
 
@@ -71,7 +75,7 @@ impl Manager {
         let errors = self
             .metrics
             .sensor_errors
-            .register(S::LABELS)
+            .register(S::LABEL)
             .ok_or_else(|| {
                 anyhow::anyhow!("insufficient space in error metrics map for {}", S::NAME)
             })?;
@@ -91,7 +95,7 @@ impl Manager {
                             "failed to bring up {}: {error:?}; retrying in {backoff:?}...",
                             S::NAME
                         );
-                        errors.incr();
+                        errors.fetch_add(1);
                     }
                 }
 
@@ -117,7 +121,7 @@ impl Manager {
                             let res = sensor.handle_control_message(req);
                             if let Err(ref error) = res {
                                 log::warn!(target: S::NAME, "failed to respond to control message {req:?}: {error}");
-                                errors.incr();
+                                errors.fetch_add(1);
                             }
 
                             if let Err(_) = msg.respond(res) {
@@ -133,7 +137,7 @@ impl Manager {
                     Err(error) => {
                         log::warn!(target: S::NAME, "error polling {}: {error:?}", S::NAME);
                         status.set_status(Status::Down);
-                        errors.incr();
+                        errors.fetch_add(1);
                         poll_wait = backoff.wait();
                     }
                     Ok(()) => {

@@ -1,5 +1,5 @@
 use crate::{
-    metric::{self, Gauge},
+    metrics::{self, Gauge},
     sensor::Sensor,
     I2cBus, I2cRef, SensorMetrics,
 };
@@ -32,11 +32,9 @@ impl Sensor for Scd30 {
     type ControlMessage = ControlMessage;
 
     const NAME: &'static str = "SCD30";
-    const LABELS: metric::Labels<'static> = &[("sensor", "SCD30")];
-
     fn bringup(busman: &'static I2cBus, metrics: &'static SensorMetrics) -> anyhow::Result<Self> {
         const INITIAL_INTERVAL_SECS: u16 = 2;
-        const SHT31: metric::Labels<'static> = &[("sensor", "SHT31")];
+        const SHT31: metrics::SensorLabel = metrics::SensorLabel("SHT31");
 
         log::debug!("connecting to SCD30");
 
@@ -65,7 +63,7 @@ impl Sensor for Scd30 {
             measurement_interval_secs: INITIAL_INTERVAL_SECS,
             co2_gauge: metrics
                 .co2
-                .register(Self::LABELS)
+                .register(Self::LABEL)
                 .expect("couldn't register gauge"),
             temp_gauge: metrics
                 .temp

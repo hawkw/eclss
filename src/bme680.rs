@@ -1,4 +1,4 @@
-use crate::{metric::Gauge, sensor::Sensor, I2cBus, I2cRef, SensorMetrics};
+use crate::{metrics::Gauge, sensor::Sensor, I2cBus, I2cRef, SensorMetrics};
 use esp_idf_hal::delay::Ets;
 
 pub struct Bme680 {
@@ -34,16 +34,16 @@ impl Sensor for Bme680 {
             sensor,
             pressure_gauge: metrics
                 .pressure
-                .register(Self::LABELS)
+                .register(Self::LABEL)
                 .expect("can't register"),
-            temp_gauge: metrics.temp.register(Self::LABELS).expect("can't register"),
+            temp_gauge: metrics.temp.register(Self::LABEL).expect("can't register"),
             humidity_gauge: metrics
                 .humidity
-                .register(Self::LABELS)
+                .register(Self::LABEL)
                 .expect("can't register"),
             gas_resistance_gauge: metrics
                 .gas_resistance
-                .register(Self::LABELS)
+                .register(Self::LABEL)
                 .expect("can't register"),
         })
     }
