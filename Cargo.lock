@@ -1361,6 +1361,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8b870d8c151b6f2fb93e84a13146138f05d02ed11c7e7c54f8826aaaf7c9f184"
 
 [[package]]
+name = "portable-atomic"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "39c00c8683a03bd4fe7db7dd64ab4abee6b42166bc81231da983486ce96be51a"
+dependencies = [
+ "serde",
+]
+
+[[package]]
 name = "postcard"
 version = "1.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1839,8 +1848,9 @@ dependencies = [
 [[package]]
 name = "tinymetrics"
 version = "0.1.0"
-source = "git+https://github.com/hawkw/tinymetrics#7edf99c4d143300ca239c947a40496b6ba551e5e"
+source = "git+https://github.com/hawkw/tinymetrics#a5dce67b8efbbf762c11f0a3e75b26418a2866d2"
 dependencies = [
+ "portable-atomic",
  "serde",
 ]
 

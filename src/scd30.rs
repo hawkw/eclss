@@ -89,9 +89,9 @@ impl Sensor for Scd30 {
             .sensor
             .read_data()
             .map_err(|err| anyhow!("error reading data: {err:?}"))?;
-        self.co2_gauge.set_value(co2);
-        self.humidity_gauge.set_value(rh);
-        self.temp_gauge.set_value(temp);
+        self.co2_gauge.set_value(co2.into());
+        self.humidity_gauge.set_value(rh.into());
+        self.temp_gauge.set_value(temp.into());
         log::info!("CO2: {co2:>8.3} ppm, Temp: {temp:>3.3} \u{00B0}C, Humidity: {rh:>3.3}%");
 
         Ok(())

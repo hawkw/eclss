@@ -62,12 +62,12 @@ impl Sensor for Bme680 {
         // representing pressures as hectopascals...
         let pressure = pressure / 100f32;
         log::info!("[BME680]: Pressure: {pressure:>3.3} hPa, Temp: {temperature:>3.3} \u{00B0}C, Humidity: {humidity:>3.3}%");
-        self.pressure_gauge.set_value(pressure);
-        self.temp_gauge.set_value(temperature);
-        self.humidity_gauge.set_value(humidity);
+        self.pressure_gauge.set_value(pressure.into());
+        self.temp_gauge.set_value(temperature.into());
+        self.humidity_gauge.set_value(humidity.into());
         if let Some(gas) = gas_resistance {
             log::info!("[BME680]: Gas resistance: {gas:>3.3} \u{2126}");
-            self.gas_resistance_gauge.set_value(gas);
+            self.gas_resistance_gauge.set_value(gas.into());
         }
 
         Ok(())
