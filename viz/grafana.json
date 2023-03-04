@@ -1,0 +1,553 @@
+{
+    "annotations": {
+        "list": [
+            {
+                "builtIn": 1,
+                "datasource": {
+                    "type": "grafana",
+                    "uid": "-- Grafana --"
+                },
+                "enable": true,
+                "hide": true,
+                "iconColor": "rgba(0, 211, 255, 1)",
+                "name": "Annotations & Alerts",
+                "target": {
+                    "limit": 100,
+                    "matchAny": false,
+                    "tags": [],
+                    "type": "dashboard"
+                },
+                "type": "dashboard"
+            }
+        ]
+    },
+    "editable": true,
+    "fiscalYearStartMonth": 0,
+    "graphTooltip": 0,
+    "id": 1,
+    "links": [],
+    "liveNow": false,
+    "panels": [
+        {
+            "collapsed": false,
+            "gridPos": {
+                "h": 1,
+                "w": 24,
+                "x": 0,
+                "y": 0
+            },
+            "id": 24,
+            "panels": [],
+            "title": "CO2",
+            "type": "row"
+        },
+        {
+            "gridPos": {
+                "h": 11,
+                "w": 6,
+                "x": 0,
+                "y": 1
+            },
+            "id": 6,
+            "libraryPanel": {
+                "name": "CO2 PPM Stat",
+                "uid": "KxkXOnx4z"
+            },
+            "title": ""
+        },
+        {
+            "datasource": {
+                "type": "prometheus",
+                "uid": "i78Xu61Vk"
+            },
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "thresholds",
+                        "seriesBy": "min"
+                    },
+                    "custom": {
+                        "axisCenteredZero": false,
+                        "axisColorMode": "series",
+                        "axisLabel": "",
+                        "axisPlacement": "auto",
+                        "axisSoftMin": 400,
+                        "barAlignment": 0,
+                        "drawStyle": "line",
+                        "fillOpacity": 0,
+                        "gradientMode": "scheme",
+                        "hideFrom": {
+                            "legend": false,
+                            "tooltip": false,
+                            "viz": false
+                        },
+                        "lineInterpolation": "linear",
+                        "lineWidth": 2,
+                        "pointSize": 5,
+                        "scaleDistribution": {
+                            "type": "linear"
+                        },
+                        "showPoints": "auto",
+                        "spanNulls": true,
+                        "stacking": {
+                            "group": "A",
+                            "mode": "none"
+                        },
+                        "thresholdsStyle": {
+                            "mode": "off"
+                        }
+                    },
+                    "mappings": [],
+                    "min": 0,
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "green",
+                                "value": null
+                            },
+                            {
+                                "color": "#EAB839",
+                                "value": 800
+                            },
+                            {
+                                "color": "orange",
+                                "value": 1100
+                            },
+                            {
+                                "color": "dark-orange",
+                                "value": 1500
+                            },
+                            {
+                                "color": "semi-dark-red",
+                                "value": 2000
+                            },
+                            {
+                                "color": "dark-red",
+                                "value": 3000
+                            },
+                            {
+                                "color": "dark-purple",
+                                "value": 5000
+                            }
+                        ]
+                    },
+                    "unit": "ppm"
+                },
+                "overrides": []
+            },
+            "gridPos": {
+                "h": 11,
+                "w": 18,
+                "x": 6,
+                "y": 1
+            },
+            "id": 8,
+            "options": {
+                "legend": {
+                    "calcs": [],
+                    "displayMode": "list",
+                    "placement": "bottom",
+                    "showLegend": true
+                },
+                "tooltip": {
+                    "mode": "single",
+                    "sort": "none"
+                }
+            },
+            "targets": [
+                {
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "i78Xu61Vk"
+                    },
+                    "editorMode": "builder",
+                    "exemplar": false,
+                    "expr": "co2_ppm",
+                    "instant": false,
+                    "legendFormat": "{{sensor}}",
+                    "range": true,
+                    "refId": "A"
+                }
+            ],
+            "transparent": true,
+            "type": "timeseries"
+        },
+        {
+            "collapsed": false,
+            "gridPos": {
+                "h": 1,
+                "w": 24,
+                "x": 0,
+                "y": 12
+            },
+            "id": 22,
+            "panels": [],
+            "title": "Temperature",
+            "type": "row"
+        },
+        {
+            "gridPos": {
+                "h": 12,
+                "w": 6,
+                "x": 0,
+                "y": 13
+            },
+            "id": 12,
+            "libraryPanel": {
+                "name": "Temperature Stat",
+                "uid": "yGJXOnbVk"
+            },
+            "title": ""
+        },
+        {
+            "datasource": {
+                "type": "prometheus",
+                "uid": "i78Xu61Vk"
+            },
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "palette-classic",
+                        "seriesBy": "last"
+                    },
+                    "custom": {
+                        "axisCenteredZero": false,
+                        "axisColorMode": "series",
+                        "axisLabel": "",
+                        "axisPlacement": "auto",
+                        "barAlignment": 0,
+                        "drawStyle": "line",
+                        "fillOpacity": 0,
+                        "gradientMode": "none",
+                        "hideFrom": {
+                            "legend": false,
+                            "tooltip": false,
+                            "viz": false
+                        },
+                        "lineInterpolation": "linear",
+                        "lineWidth": 2,
+                        "pointSize": 5,
+                        "scaleDistribution": {
+                            "type": "linear"
+                        },
+                        "showPoints": "auto",
+                        "spanNulls": true,
+                        "stacking": {
+                            "group": "A",
+                            "mode": "none"
+                        },
+                        "thresholdsStyle": {
+                            "mode": "off"
+                        }
+                    },
+                    "mappings": [],
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "green",
+                                "value": null
+                            },
+                            {
+                                "color": "red",
+                                "value": 80
+                            }
+                        ]
+                    },
+                    "unit": "celsius"
+                },
+                "overrides": []
+            },
+            "gridPos": {
+                "h": 12,
+                "w": 18,
+                "x": 6,
+                "y": 13
+            },
+            "id": 2,
+            "options": {
+                "legend": {
+                    "calcs": [],
+                    "displayMode": "list",
+                    "placement": "bottom",
+                    "showLegend": true
+                },
+                "tooltip": {
+                    "mode": "single",
+                    "sort": "none"
+                }
+            },
+            "pluginVersion": "9.3.6",
+            "targets": [
+                {
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "i78Xu61Vk"
+                    },
+                    "editorMode": "builder",
+                    "expr": "temperature_degrees_celcius",
+                    "format": "time_series",
+                    "legendFormat": "{{sensor}}",
+                    "range": true,
+                    "refId": "A"
+                }
+            ],
+            "transparent": true,
+            "type": "timeseries"
+        },
+        {
+            "collapsed": false,
+            "gridPos": {
+                "h": 1,
+                "w": 24,
+                "x": 0,
+                "y": 25
+            },
+            "id": 16,
+            "panels": [],
+            "title": "Pressure",
+            "type": "row"
+        },
+        {
+            "gridPos": {
+                "h": 11,
+                "w": 6,
+                "x": 0,
+                "y": 26
+            },
+            "id": 14,
+            "libraryPanel": {
+                "name": "Pressure Stat",
+                "uid": "7b59O7xVz"
+            },
+            "title": ""
+        },
+        {
+            "datasource": {
+                "type": "prometheus",
+                "uid": "i78Xu61Vk"
+            },
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "continuous-BlPu",
+                        "seriesBy": "last"
+                    },
+                    "custom": {
+                        "axisCenteredZero": false,
+                        "axisColorMode": "series",
+                        "axisLabel": "",
+                        "axisPlacement": "auto",
+                        "barAlignment": 0,
+                        "drawStyle": "line",
+                        "fillOpacity": 0,
+                        "gradientMode": "scheme",
+                        "hideFrom": {
+                            "legend": false,
+                            "tooltip": false,
+                            "viz": false
+                        },
+                        "lineInterpolation": "linear",
+                        "lineWidth": 2,
+                        "pointSize": 5,
+                        "scaleDistribution": {
+                            "type": "linear"
+                        },
+                        "showPoints": "auto",
+                        "spanNulls": true,
+                        "stacking": {
+                            "group": "A",
+                            "mode": "none"
+                        },
+                        "thresholdsStyle": {
+                            "mode": "off"
+                        }
+                    },
+                    "mappings": [],
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "green",
+                                "value": null
+                            }
+                        ]
+                    },
+                    "unit": "pressurehpa"
+                },
+                "overrides": []
+            },
+            "gridPos": {
+                "h": 11,
+                "w": 18,
+                "x": 6,
+                "y": 26
+            },
+            "id": 18,
+            "options": {
+                "legend": {
+                    "calcs": [],
+                    "displayMode": "list",
+                    "placement": "bottom",
+                    "showLegend": true
+                },
+                "tooltip": {
+                    "mode": "single",
+                    "sort": "none"
+                }
+            },
+            "targets": [
+                {
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "i78Xu61Vk"
+                    },
+                    "editorMode": "builder",
+                    "expr": "pressure_hpa",
+                    "legendFormat": "{{sensor}}",
+                    "range": true,
+                    "refId": "A"
+                }
+            ],
+            "transparent": true,
+            "type": "timeseries"
+        },
+        {
+            "collapsed": false,
+            "gridPos": {
+                "h": 1,
+                "w": 24,
+                "x": 0,
+                "y": 37
+            },
+            "id": 26,
+            "panels": [],
+            "title": "Relative Humidity",
+            "type": "row"
+        },
+        {
+            "gridPos": {
+                "h": 11,
+                "w": 6,
+                "x": 0,
+                "y": 38
+            },
+            "id": 10,
+            "libraryPanel": {
+                "name": "Humidity% Stat",
+                "uid": "F2erO7xVk"
+            },
+            "title": ""
+        },
+        {
+            "datasource": {
+                "type": "prometheus",
+                "uid": "i78Xu61Vk"
+            },
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "palette-classic"
+                    },
+                    "custom": {
+                        "axisCenteredZero": false,
+                        "axisColorMode": "series",
+                        "axisLabel": "",
+                        "axisPlacement": "auto",
+                        "barAlignment": 0,
+                        "drawStyle": "line",
+                        "fillOpacity": 0,
+                        "gradientMode": "none",
+                        "hideFrom": {
+                            "legend": false,
+                            "tooltip": false,
+                            "viz": false
+                        },
+                        "lineInterpolation": "linear",
+                        "lineStyle": {
+                            "fill": "solid"
+                        },
+                        "lineWidth": 2,
+                        "pointSize": 5,
+                        "scaleDistribution": {
+                            "type": "linear"
+                        },
+                        "showPoints": "auto",
+                        "spanNulls": true,
+                        "stacking": {
+                            "group": "A",
+                            "mode": "none"
+                        },
+                        "thresholdsStyle": {
+                            "mode": "off"
+                        }
+                    },
+                    "mappings": [],
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "green",
+                                "value": null
+                            }
+                        ]
+                    },
+                    "unit": "humidity"
+                },
+                "overrides": []
+            },
+            "gridPos": {
+                "h": 11,
+                "w": 18,
+                "x": 6,
+                "y": 38
+            },
+            "id": 20,
+            "options": {
+                "legend": {
+                    "calcs": [],
+                    "displayMode": "list",
+                    "placement": "bottom",
+                    "showLegend": true
+                },
+                "tooltip": {
+                    "mode": "single",
+                    "sort": "none"
+                }
+            },
+            "targets": [
+                {
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "i78Xu61Vk"
+                    },
+                    "editorMode": "builder",
+                    "expr": "humidity_percent",
+                    "legendFormat": "{{sensor}}",
+                    "range": true,
+                    "refId": "A"
+                }
+            ],
+            "transparent": true,
+            "type": "timeseries"
+        }
+    ],
+    "refresh": "5s",
+    "schemaVersion": 37,
+    "style": "dark",
+    "tags": [],
+    "templating": {
+        "list": []
+    },
+    "time": {
+        "from": "now-1h",
+        "to": "now"
+    },
+    "timepicker": {},
+    "timezone": "",
+    "title": "ECLSS",
+    "uid": "Xzfg9eJVz",
+    "version": 12,
+    "weekStart": ""
+}
