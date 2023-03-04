@@ -1,12 +1,10 @@
 #![feature(type_alias_impl_trait)]
 #![doc = include_str!("../docs/README.md")]
 pub mod actor;
-pub mod atomic;
 pub mod bme680;
 pub mod http;
 pub mod metrics;
 pub mod net;
-pub mod registry;
 pub mod retry;
 pub mod scd30;
 pub mod sensor;

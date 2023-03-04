@@ -1,16 +1,17 @@
 use crate::{
     actor::Actor,
     metrics::{self, SensorMetrics},
-    registry::RegistryMap,
     retry::ExpBackoff,
     I2cBus,
 };
 use embassy_time::{Duration, Timer};
 use futures::{select, FutureExt};
 use std::fmt;
+use tinymetrics::registry::RegistryMap;
 
 mod status;
 pub use self::status::{Status, StatusCell};
+
 /// Represents a pollable I2C sensor.
 pub trait Sensor: Sized {
     /// Messages sent to control the behavior of this sensor.
@@ -70,7 +71,7 @@ impl Manager {
         ctrl_rx: Actor<S::ControlMessage, anyhow::Result<()>>,
     ) -> anyhow::Result<()> {
         let status = STATUSES
-            .register_default(S::NAME)
+            .get_or_register_default(S::NAME)
             .ok_or_else(|| anyhow::anyhow!("insufficient space in status map for {}", S::NAME))?;
         let errors = self
             .metrics
