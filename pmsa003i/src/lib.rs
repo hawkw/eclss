@@ -11,10 +11,6 @@ pub struct Pmsa003i<I> {
 
 #[derive(Copy, Clone, Debug)]
 pub struct Reading {
-    // pm1: f32,
-    // pm2_5: f32,
-    // pm10: f32,
-    // uint16_t framelen;       ///< How long this data chunk is
     /// PM1.0 concentration in µg/𝑚3.
     pm1_0_standard: u16,
     /// PM2.5 concentration in µg/𝑚3.
@@ -47,7 +43,7 @@ pub struct Reading {
     /// Number of particles with diameter >= 5.0 µm in 0.1L of air.
     particles_5_0um: u16,
     /// Number of particles with diameter >= 10.0 µm in 0.1L of air.
-    particles_5_0um: u16,
+    particles_10_0um: u16,
 }
 
 pub enum Error<E> {
