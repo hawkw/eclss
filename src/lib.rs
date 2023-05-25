@@ -5,7 +5,6 @@ pub mod bme680;
 pub mod http;
 pub mod metrics;
 pub mod net;
-// pub mod pmsa003i;
 pub mod retry;
 pub mod scd30;
 pub mod sensor;
