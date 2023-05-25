@@ -30,30 +30,31 @@ pio = ["esp-idf-sys/pio"]
 [dependencies]
 anyhow = { version = "1", default-features = false }
 bosch-bme680 = "0.1.0"
-channel-bridge = { version = "0.2", default-features = false, features = [
+channel-bridge = { version = "0.3", default-features = false, features = [
     "notification",
     "nightly",
     "embedded-svc",
 ] }
-esp-idf-sys = { version = "0.32.1", features = ["binstart"] }
-esp-idf-hal = { version = "0.40.1", features = [
+esp-idf-sys = { version = "0.33.0", features = ["binstart"] }
+esp-idf-hal = { version = "0.41.0", features = [
     "edge-executor",
     "embassy-sync",
     "critical-section",
     "std",
 ] }
-esp-idf-svc = { version = "0.45", features = [
+esp-idf-svc = { version = "0.46", features = [
     "alloc",
     "experimental",
     "nightly",
     "embassy-time-isr-queue",
 ] }
 embassy-time = "0.1.0"
-embedded-svc = { version = "0.24", features = [
+embedded-svc = { version = "0.25", features = [
     "alloc",
     "nightly",
     "experimental",
 ] }
+# embedded-io = { version = "0.3.0" }
 edge-executor = { version = "0.3.0" }
 futures = { version = "0.3.25" }
 heapless = "0.7.16"

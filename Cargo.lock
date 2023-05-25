@@ -84,6 +84,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "atomic-waker"
+version = "1.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1181e1e0d1fce796a03db1ae795d67167da795f9cf4a39c37589e85ef57f26d3"
+
+[[package]]
 name = "autocfg"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -240,9 +246,9 @@ checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 
 [[package]]
 name = "channel-bridge"
-version = "0.2.0"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ad81366dab894b50b70bd9835ac73134632a23cfbd9d3c980ec1333a52a308f1"
+checksum = "7ff5be447e4fed151f7317f4babeb2fb86e333e3583e8fc1aad33d3d8409e8f0"
 dependencies = [
  "embassy-futures",
  "embassy-sync",
@@ -482,11 +488,10 @@ checksum = "47e5367165d347c039360f784812f493b001583ab6a3dd8622f4ce9c30374ec3"
 
 [[package]]
 name = "embassy-sync"
-version = "0.1.0"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b6ea38e6ea5d0361d087680f786c19a1454becb06174790280534a3be05ed839"
+checksum = "a0dad296a6f70bfdc32ef52442a31f98c28e1608893c1cecc9b6f419bab005a0"
 dependencies = [
- "atomic-polyfill 1.0.2",
  "cfg-if",
  "critical-section",
  "embedded-io",
@@ -529,40 +534,40 @@ dependencies = [
 
 [[package]]
 name = "embedded-hal"
-version = "1.0.0-alpha.9"
+version = "1.0.0-alpha.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "129b101ddfee640565f7c07b301a31d95aa21e5acef21a491c307139f5fa4c91"
+checksum = "f65c4d073f5d91c66e629b216818a4c9747eeda0debedf2deda9a0a947e4e93b"
 
 [[package]]
 name = "embedded-hal-nb"
-version = "1.0.0-alpha.1"
+version = "1.0.0-alpha.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7e0760ec0a3bf76859d5e33f39542af103f157d5b2ecfb00ace56dd461472e3a"
+checksum = "1465fffd56a95bbc105c17965bca1c1d5815027b1cc6bb183bc05d04563d065c"
 dependencies = [
- "embedded-hal 1.0.0-alpha.9",
+ "embedded-hal 1.0.0-alpha.10",
  "nb 1.1.0",
 ]
 
 [[package]]
 name = "embedded-io"
-version = "0.3.1"
+version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "33dfba9e6c113f2fd8537c943780a7345945e66c86972e356b1152e19481bcf5"
+checksum = "ef1a6892d9eef45c8fa6b9e0086428a2cca8491aca8f787c534a3d6d0bcb3ced"
 dependencies = [
  "futures",
 ]
 
 [[package]]
 name = "embedded-svc"
-version = "0.24.0"
+version = "0.25.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2079f8182848872fb6e8eed2c1ba3aea409fc71984a9e8090733c08c404e7864"
+checksum = "c4b70d70bd45c40027ed1c997ec3fb63ffb7237d5b2ad7b7da89adf0c3b93c71"
 dependencies = [
  "anyhow",
+ "atomic-waker",
  "defmt",
  "embedded-io",
  "enumset",
- "futures",
  "heapless",
  "log",
  "no-std-net",
@@ -653,19 +658,21 @@ dependencies = [
 
 [[package]]
 name = "esp-idf-hal"
-version = "0.40.1"
+version = "0.41.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c4354dcc4d157de675c55eb2e98f4985a526ea56fff316aa0939a63636c4952b"
+checksum = "6a96e45aac076e5ba2e98a650c22a7deca22dff9ee34b817898de60b14264381"
 dependencies = [
  "anyhow",
+ "atomic-waker",
  "critical-section",
  "edge-executor",
  "embassy-sync",
  "embedded-can",
  "embedded-hal 0.2.7",
- "embedded-hal 1.0.0-alpha.9",
+ "embedded-hal 1.0.0-alpha.10",
  "embedded-hal-nb",
  "embuild",
+ "enumset",
  "esp-idf-sys",
  "heapless",
  "nb 1.1.0",
@@ -673,11 +680,12 @@ dependencies = [
 
 [[package]]
 name = "esp-idf-svc"
-version = "0.45.0"
+version = "0.46.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f6035126eeaf81d19ca5342fa8f36e85489c6fba1148ec8af167a6b9bff39e0f"
+checksum = "665233a26567d141f1bab603b9a868dc28bb8bea1188e7d927bab44329b84d63"
 dependencies = [
  "anyhow",
+ "embassy-futures",
  "embassy-sync",
  "embassy-time",
  "embedded-svc",
@@ -692,9 +700,9 @@ dependencies = [
 
 [[package]]
 name = "esp-idf-sys"
-version = "0.32.1"
+version = "0.33.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7b3458faf5c04761cb9a122ba30714afda5e88848e2f99c6e6c05c77ecf626d8"
+checksum = "707a61606531515dd0c6340b2f0d8801418834161c0ce09ceed625fd4e65145b"
 dependencies = [
  "anyhow",
  "bindgen",
