@@ -19,12 +19,20 @@ pub struct SensorMetrics {
     #[serde(serialize_with = "serialize_metric")]
     pub gas_resistance: GaugeFamily<'static, MAX_METRICS, SensorLabel>,
     #[serde(serialize_with = "serialize_metric")]
+    pub pm_conc: GaugeFamily<'static, 3, DiameterLabel>,
+    #[serde(serialize_with = "serialize_metric")]
+    pub pm_count: GaugeFamily<'static, 6, DiameterLabel>,
+    #[serde(serialize_with = "serialize_metric")]
     pub sensor_errors: CounterFamily<'static, MAX_METRICS, SensorLabel>,
 }
 
 #[derive(Debug, Eq, PartialEq, serde::Serialize)]
 #[serde(transparent)]
 pub struct SensorLabel(pub &'static str);
+
+#[derive(Debug, Eq, PartialEq, serde::Serialize)]
+#[serde(transparent)]
+pub struct DiameterLabel(pub &'static str);
 
 impl SensorMetrics {
     pub const fn new() -> Self {
@@ -49,6 +57,14 @@ impl SensorMetrics {
                 .with_help("BME680 VOC sensor resistance, in Ohms.")
                 .with_unit("Ohms")
                 .build_labeled::<_, SensorLabel, 4>(),
+            pm_conc: MetricBuilder::new("pm_concentration_ug_m3")
+                .with_help("Particulate matter concentration in ug/m^3")
+                .with_unit("ug/m^3")
+                .build_labeled::<_, DiameterLabel, 3>(),
+            pm_count: MetricBuilder::new("pm_count")
+                .with_help("Particulate matter count per 0.1L of air.")
+                .with_unit("particulates per 0.1L")
+                .build_labeled::<_, DiameterLabel, 6>(),
             sensor_errors: MetricBuilder::new("sensor_error_count")
                 .with_help("Count of I2C errors that occurred while talking to a sensor")
                 .build_labeled::<_, SensorLabel, 4>(),
@@ -77,6 +93,12 @@ impl fmt::Display for SensorMetrics {
 impl FmtLabels for SensorLabel {
     fn fmt_labels(&self, writer: &mut impl core::fmt::Write) -> core::fmt::Result {
         write!(writer, "sensor=\"{}\"", self.0)
+    }
+}
+
+impl FmtLabels for DiameterLabel {
+    fn fmt_labels(&self, writer: &mut impl core::fmt::Write) -> core::fmt::Result {
+        write!(writer, "diameter=\"{}\",sensor=\"PMSA003I\"", self.0)
     }
 }
 
