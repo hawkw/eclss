@@ -250,7 +250,7 @@ impl fmt::Display for Concentrations {
 // === impl ParticleCounts ===
 
 impl ParticleCounts {
-    pub const UNIT: &str = "/0.1L";
+    pub const UNIT: &str = "per 0.1L";
 }
 
 impl fmt::Display for ParticleCounts {
@@ -267,12 +267,13 @@ impl fmt::Display for ParticleCounts {
         } = self;
         write!(
             f,
-            "0.3{UM}: {particles_0_3um}{UNIT}, \
-            0.5{UM}: {particles_0_5um}{UNIT}, \
-            1.0{UM}: {particles_1_0um}{UNIT}, \
-            2.5{UM}: {particles_2_5um}{UNIT}, \
-            5.0{UM}: {particles_5_0um}{UNIT}, \
-            10.0{UM}: {particles_10_0um}{UNIT}"
+            "{UNIT} of air: \
+            >=0.3{UM}: {particles_0_3um}, \
+            >=0.5{UM}: {particles_0_5um}, \
+            >=1.0{UM}: {particles_1_0um}, \
+            >=2.5{UM}: {particles_2_5um}, \
+            >=5.0{UM}: {particles_5_0um}, \
+            >=10.0{UM}: {particles_10_0um}"
         )
     }
 }

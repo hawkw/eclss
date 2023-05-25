@@ -21,7 +21,7 @@ pub struct SensorMetrics {
     #[serde(serialize_with = "serialize_metric")]
     pub pm_conc: GaugeFamily<'static, 3, DiameterLabel>,
     #[serde(serialize_with = "serialize_metric")]
-    pub pm_count: GaugeFamily<'static, 5, DiameterLabel>,
+    pub pm_count: GaugeFamily<'static, 6, DiameterLabel>,
     #[serde(serialize_with = "serialize_metric")]
     pub sensor_errors: CounterFamily<'static, MAX_METRICS, SensorLabel>,
 }
@@ -64,7 +64,7 @@ impl SensorMetrics {
             pm_count: MetricBuilder::new("pm_count")
                 .with_help("Particulate matter count per 0.1L of air.")
                 .with_unit("particulates per 0.1L")
-                .build_labeled::<_, DiameterLabel, 5>(),
+                .build_labeled::<_, DiameterLabel, 6>(),
             sensor_errors: MetricBuilder::new("sensor_error_count")
                 .with_help("Count of I2C errors that occurred while talking to a sensor")
                 .build_labeled::<_, SensorLabel, 4>(),

@@ -11,6 +11,7 @@ pub struct Pmsa003i {
     pm10_0: &'static Gauge,
     particles_0_3um: &'static Gauge,
     particles_0_5um: &'static Gauge,
+    particles_1_0um: &'static Gauge,
     particles_2_5um: &'static Gauge,
     particles_5_0um: &'static Gauge,
     particles_10_0um: &'static Gauge,
@@ -33,6 +34,7 @@ impl Sensor for Pmsa003i {
             pm10_0: metrics.pm_conc.register(DiameterLabel("10.0")).unwrap(),
             particles_0_3um: metrics.pm_count.register(DiameterLabel("0.3")).unwrap(),
             particles_0_5um: metrics.pm_count.register(DiameterLabel("0.5")).unwrap(),
+            particles_1_0um: metrics.pm_count.register(DiameterLabel("1.0")).unwrap(),
             particles_2_5um: metrics.pm_count.register(DiameterLabel("2.5")).unwrap(),
             particles_5_0um: metrics.pm_count.register(DiameterLabel("5.0")).unwrap(),
             particles_10_0um: metrics.pm_count.register(DiameterLabel("10.0")).unwrap(),
@@ -49,8 +51,8 @@ impl Sensor for Pmsa003i {
             .read()
             .map_err(|error| anyhow::anyhow!("error reading from {NAME}: {error:?}"))?;
 
-        log::info!("[{NAME}]: {concentrations:#}");
-        log::info!("[{NAME}]: {counts:#}");
+        log::info!("[{NAME}]: particulate concentrations: {concentrations:#}");
+        log::info!("[{NAME}]: particulates {counts:#}");
 
         macro_rules! set_metrics {
             ($src:ident => $($name:ident),+) => {
@@ -63,6 +65,7 @@ impl Sensor for Pmsa003i {
         set_metrics!(counts =>
             particles_0_3um,
             particles_0_5um,
+            particles_1_0um,
             particles_2_5um,
             particles_5_0um,
             particles_10_0um
