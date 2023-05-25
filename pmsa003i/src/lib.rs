@@ -68,6 +68,8 @@ pub struct ParticleCounts {
     pub particles_0_3um: u16,
     /// Number of particles with diameter >= 0.5 µm in 0.1L of air.
     pub particles_0_5um: u16,
+    /// Number of particles with diameter >= 1.0 µm in 0.1L of air.
+    pub particles_1_0um: u16,
     /// Number of particles with diameter >= 2.5 µm in 0.1L of air.
     pub particles_2_5um: u16,
     /// Number of particles with diameter >= 5.0 µm in 0.1L of air.
@@ -84,6 +86,11 @@ pub enum Error<E> {
     Checksum { sum: u16, checksum: u16 },
     /// The packet was missing the magic word.
     BadMagic(u16),
+    /// The sensor sent an error code.
+    ///
+    /// **Note**: I couldn't find any documentation of what these error codes
+    /// actually mean in the data sheet. I assume if it's non-zero, that's bad?
+    ErrorCode(u8),
 }
 
 const MAGIC: u16 = 0x424d;
@@ -102,22 +109,34 @@ where
     I: i2c::Read<Error = E>,
 {
     pub fn read(&mut self) -> Result<Reading, Error<E>> {
-        let mut buf = [0; PACKET_LEN];
-        self.i2c.read(I2C_ADDR, &mut buf[..]).map_err(Error::I2c)?;
+        let mut bytes = [0; PACKET_LEN];
+        self.i2c
+            .read(I2C_ADDR, &mut bytes[..])
+            .map_err(Error::I2c)?;
+        // reads a 16-bit word from `offset`
+        macro_rules! words {
+            [$offset:expr] => {
+                u16::from_be_bytes([bytes[$offset], bytes[$offset + 1]])
+            }
+        }
 
-        let magic = u16::from_be_bytes([buf[0], buf[1]]);
+        let magic = words![0];
         if magic != MAGIC {
-            // you didn't say the magic word!
+            // you didn't say the magic words!
             return Err(Error::BadMagic(magic));
         }
 
+        if bytes[29] != 0 {
+            // byte 29 is an error code
+            return Err(Error::ErrorCode(bytes[27]));
+        }
+
         // last two bytes are the checksum so dont include them in the checksum.
-        let sum = buf
+        let sum = bytes[0..PACKET_LEN - 2]
             .iter()
-            .take(PACKET_LEN - 2)
             .map(|&byte| byte as u16)
             .sum();
-        let checksum = u16::from_be_bytes([buf[PACKET_LEN - 2], buf[PACKET_LEN - 1]]);
+        let checksum = words![PACKET_LEN - 2];
         if sum != checksum {
             return Err(Error::Checksum { sum, checksum });
         }
@@ -129,27 +148,28 @@ where
         // now we get to the good stuff:
         let reading = Reading {
             concentrations: Concentrations {
-                pm1_0_standard: u16::from_be_bytes([buf[4], buf[5]]),
-                pm2_5_standard: u16::from_be_bytes([buf[6], buf[7]]),
-                pm10_0_standard: u16::from_be_bytes([buf[8], buf[9]]),
+                pm1_0_standard: words![4],
+                pm2_5_standard: words![6],
+                pm10_0_standard: words![8],
 
-                pm1_0: u16::from_be_bytes([buf[9], buf[10]]),
-                pm2_5: u16::from_be_bytes([buf[11], buf[12]]),
-                pm10_0: u16::from_be_bytes([buf[13], buf[14]]),
+                pm1_0: words![10],
+                pm2_5: words![12],
+                pm10_0: words![14],
             },
 
             counts: ParticleCounts {
-                particles_0_3um: u16::from_be_bytes([buf[15], buf[16]]),
-                particles_0_5um: u16::from_be_bytes([buf[17], buf[18]]),
-                particles_2_5um: u16::from_be_bytes([buf[19], buf[20]]),
-                particles_5_0um: u16::from_be_bytes([buf[21], buf[22]]),
-                particles_10_0um: u16::from_be_bytes([buf[23], buf[24]]),
+                particles_0_3um: words![16],
+                particles_0_5um: words![18],
+                particles_1_0um: words![20],
+                particles_2_5um: words![22],
+                particles_5_0um: words![24],
+                particles_10_0um: words![26],
             },
 
-            sensor_version: buf[25],
+            // remaining bytes are version, error code (not documented lol), and
+            // the checksum, which we already looked at
+            sensor_version: bytes[28],
         };
-        // remaining bytes are version, error code (not documented lol), and
-        // the checksum, which we already looked at
 
         Ok(reading)
     }
@@ -169,6 +189,7 @@ impl<E: fmt::Display> fmt::Display for Error<E> {
                 f,
                 "PMSA003I didn't say the magic word (expected {MAGIC:#x}. got {actual:#x})"
             ),
+            Self::ErrorCode(code) => write!(f, "PMSA003I sent error code {code:#x}"),
         }
     }
 }
@@ -239,6 +260,7 @@ impl fmt::Display for ParticleCounts {
         let Self {
             particles_0_3um,
             particles_0_5um,
+            particles_1_0um,
             particles_2_5um,
             particles_5_0um,
             particles_10_0um,
@@ -247,6 +269,7 @@ impl fmt::Display for ParticleCounts {
             f,
             "0.3{UM}: {particles_0_3um}{UNIT}, \
             0.5{UM}: {particles_0_5um}{UNIT}, \
+            1.0{UM}: {particles_1_0um}{UNIT}, \
             2.5{UM}: {particles_2_5um}{UNIT}, \
             5.0{UM}: {particles_5_0um}{UNIT}, \
             10.0{UM}: {particles_10_0um}{UNIT}"

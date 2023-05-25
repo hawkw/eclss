@@ -1,0 +1,8 @@
+[package]
+name = "pmsa003i"
+version = "0.1.0"
+authors = ["Eliza Weisman <eliza@elizas.website>"]
+edition = "2021"
+
+[dependencies]
+embedded-hal = { version = "0.2.5" }
