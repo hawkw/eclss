@@ -90,6 +90,13 @@ const MAGIC: u16 = 0x424d;
 const PACKET_LEN: usize = 32;
 const I2C_ADDR: u8 = 0x12;
 
+impl<I> Pmsa003i<I> {
+    #[must_use]
+    pub const fn new(i2c: I) -> Self {
+        Self { i2c }
+    }
+}
+
 impl<I, E> Pmsa003i<I>
 where
     I: i2c::Read<Error = E>,
