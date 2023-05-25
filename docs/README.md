@@ -34,8 +34,8 @@ format][prom].
   + **[Bosch BME680][bme680] temperature, barometric pressure, humidity, and
     VOC** (MOX gas sensor). i meant to get the slightly newer BME688 breakout
     but i clicked the wrong one. a BME688 would also work.
-  + **[Plantower PMSA003I][pmsa003i] particulate matter sensor** (PLANNED). i
-    haven't actually bought this one yet.
+  + **[Plantower PMSA003I][pmsa003i] particulate matter sensor**, measuring
+    particulate matter concetrations.
   + **more sensors coming soon!** there are several different I<sup>2</sup>C
     air quality sensors, and even more different temperature/pressure/humidity
     sensors, on the market. eventually, i'd like to add drivers for most of the
@@ -81,7 +81,7 @@ format][prom].
   display ECLSS prometheus metrics:
 
   ![grafana screenshot](assets/grafana.png)
-  
+
 [prom]: https://prometheus.io/docs/instrumenting/exposition_formats/#text-based-format
 [`msiebuhr/prometheus-mdns-sd`]: https://github.com/msiebuhr/prometheus-mdns-sd
 

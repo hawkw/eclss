@@ -1,8 +1,4 @@
-// stolen from
-// https://github.com/adafruit/Adafruit_PM25AQI/blob/master/Adafruit_PM25AQI.cpp
-// except the bugs, which are my own :)
-// and also the datasheet, which is extremely translated:
-// https://cdn-shop.adafruit.com/product-files/4632/4505_PMSA003I_series_data_manual_English_V2.6.pdf
+#![doc = include_str!("../README.md")]
 use core::fmt;
 use embedded_hal::blocking::i2c;
 
