@@ -3,8 +3,10 @@
 // except the bugs, which are my own :)
 // and also the datasheet, which is extremely translated:
 // https://cdn-shop.adafruit.com/product-files/4632/4505_PMSA003I_series_data_manual_English_V2.6.pdf
+use core::fmt;
 use embedded_hal::blocking::i2c;
 
+#[derive(Debug)]
 pub struct Pmsa003i<I> {
     i2c: I,
 }
@@ -12,40 +14,42 @@ pub struct Pmsa003i<I> {
 #[derive(Copy, Clone, Debug)]
 pub struct Reading {
     /// PM1.0 concentration in µg/𝑚3.
-    pm1_0_standard: u16,
+    pub pm1_0_standard: u16,
     /// PM2.5 concentration in µg/𝑚3.
-    pm2_5_standard: u16,
+    pub pm2_5_standard: u16,
     /// PM10.0 concentration in µg/𝑚3.
-    pm10_0_standard: u16,
+    pub pm10_0_standard: u16,
 
     /// PM1.0 concentration in µg/𝑚3, under atmospheric environment.
     ///
-    /// Note: I don't actually know what "under atmospheric environment" means
-    /// but it says that in the datasheet...
-    pm1_0_env: u16,
+    /// *Note*: I don't actually know what "under atmospheric environment" means
+    /// but it says that in the datasheet. I am guessing this refers to humidity
+    /// compensation?
+    pub pm1_0: u16,
     /// PM2.5 concentration in µg/𝑚3, under atmospheric environment.
     ///
     /// Note: I don't actually know what "under atmospheric environment" means
     /// but it says that in the datasheet...
-    pm2_5_env: u16,
+    pub pm2_5: u16,
     /// PM10.0 concentration in µg/𝑚3, under atmospheric environment.
     ///
     /// Note: I don't actually know what "under atmospheric environment" means
     /// but it says that in the datasheet...
-    pm10_0_env: u16,
+    pub pm10_0: u16,
 
     /// Number of particles with diameter >= 0.3 µm in 0.1L of air.
-    particles_0_3um: u16,
+    pub particles_0_3um: u16,
     /// Number of particles with diameter >= 0.5 µm in 0.1L of air.
-    particles_0_5um: u16,
+    pub particles_0_5um: u16,
     /// Number of particles with diameter >= 2.5 µm in 0.1L of air.
-    particles_2_5um: u16,
+    pub particles_2_5um: u16,
     /// Number of particles with diameter >= 5.0 µm in 0.1L of air.
-    particles_5_0um: u16,
+    pub particles_5_0um: u16,
     /// Number of particles with diameter >= 10.0 µm in 0.1L of air.
-    particles_10_0um: u16,
+    pub particles_10_0um: u16,
 }
 
+#[derive(Debug)]
 pub enum Error<E> {
     I2c(E),
     Checksum { sum: u16, checksum: u16 },
@@ -66,16 +70,16 @@ where
 
         if u16::from_be_bytes([buf[0], buf[1]]) != MAGIC {
             // magic isn't real :(
-            return Err(NoMagic);
+            return Err(Error::NoMagic);
         }
 
         // last two bytes are the checksum so dont include them in the checksum.
         let sum = buf
             .iter()
             .take(PACKET_LEN - 2)
-            .map(|byte| byte as u16)
+            .map(|&byte| byte as u16)
             .sum();
-        let checksum = u16::from_be_bytes([buf[PACKET_LEN - 1], buf[PACKET_LEN]]);
+        let checksum = u16::from_be_bytes([buf[PACKET_LEN - 2], buf[PACKET_LEN - 1]]);
         if sum != checksum {
             return Err(Error::Checksum { sum, checksum });
         }
@@ -90,17 +94,22 @@ where
             pm2_5_standard: u16::from_be_bytes([buf[6], buf[7]]),
             pm10_0_standard: u16::from_be_bytes([buf[8], buf[9]]),
 
-            pm1_0_env: u16::from_be_bytes([buf[9], buf[10]]),
-            pm2_5_env: u16::from_be_bytes([buf[11], buf[12]]),
-            pm10_0_env: u16::from_be_bytes([buf[13], buf[14]]),
+            pm1_0: u16::from_be_bytes([buf[9], buf[10]]),
+            pm2_5: u16::from_be_bytes([buf[11], buf[12]]),
+            pm10_0: u16::from_be_bytes([buf[13], buf[14]]),
 
             particles_0_3um: u16::from_be_bytes([buf[15], buf[16]]),
             particles_0_5um: u16::from_be_bytes([buf[17], buf[18]]),
             particles_2_5um: u16::from_be_bytes([buf[19], buf[20]]),
             particles_5_0um: u16::from_be_bytes([buf[21], buf[22]]),
-            // remaining bytes are version, error code (not documented lol), and
-            // the checksum
+            particles_10_0um: u16::from_be_bytes([buf[23], buf[24]]),
         };
+
+        // remaining bytes are version, error code (not documented lol), and
+        // the checksum, which we already looked at
+
         Ok(reading)
     }
 }
+
+// === impl
