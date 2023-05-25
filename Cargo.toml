@@ -1,10 +1,15 @@
+[workspace]
+members = [
+    ".",
+    "pmsa003i"
+]
+
 [package]
 name = "eclss"
 version = "0.1.0"
 authors = ["Eliza Weisman <eliza@buoyant.io>"]
 edition = "2021"
 resolver = "2"
-
 
 [profile.release]
 opt-level = "z"
@@ -64,6 +69,7 @@ tinymetrics = { git = "https://github.com/hawkw/tinymetrics", default-features =
     "serde",
     "std",
 ]}
+pmsa003i = { path = "pmsa003i" }
 
 [build-dependencies]
 embuild = "0.31.0"
