@@ -68,13 +68,13 @@ impl Sensor for Bme680 {
         let pressure = pressure / 100f32;
         // TODO(eliza): since we also know the pressure we could skip some of
         // this hairy floating-point calculation...
-        let abs_humidity = crate::units::absolute_humidity(temperature as f64, humidity as f64);
+        let abs_humidity = crate::units::absolute_humidity(temperature, humidity);
         log::info!("[BME680]: Pressure: {pressure:>3.3} hPa, Temp: {temperature:>3.3} \
             \u{00B0}C, Humidity: {abs_humidity:>3.3} g/𝑚³ ({humidity:>3.3}%)");
         self.pressure_gauge.set_value(pressure.into());
         self.temp_gauge.set_value(temperature.into());
         self.rel_humidity_gauge.set_value(humidity.into());
-        self.abs_humidity_gauge.set_value(abs_humidity);
+        self.abs_humidity_gauge.set_value(abs_humidity.into());
         if let Some(gas) = gas_resistance {
             log::info!("[BME680]: Gas resistance: {gas:>3.3} \u{2126}");
             self.gas_resistance_gauge.set_value(gas.into());
