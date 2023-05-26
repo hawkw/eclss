@@ -93,8 +93,12 @@ impl SensorMetrics {
         self.temp.fmt_metric(f)?;
         self.co2.fmt_metric(f)?;
         self.rel_humidity.fmt_metric(f)?;
+        self.abs_humidity.fmt_metric(f)?;
         self.pressure.fmt_metric(f)?;
         self.gas_resistance.fmt_metric(f)?;
+        self.tvoc.fmt_metric(f)?;
+        self.pm_conc.fmt_metric(f)?;
+        self.pm_count.fmt_metric(f)?;
         self.sensor_errors.fmt_metric(f)?;
         Ok(())
     }
