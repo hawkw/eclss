@@ -11,7 +11,8 @@ pub struct Scd30 {
     measurement_interval_secs: u16,
     co2_gauge: &'static Gauge,
     temp_gauge: &'static Gauge,
-    humidity_gauge: &'static Gauge,
+    rel_humidity_gauge: &'static Gauge,
+    abs_humidity_gauge: &'static Gauge,
 }
 
 #[derive(Debug, Clone)]
@@ -69,8 +70,12 @@ impl Sensor for Scd30 {
                 .temp
                 .register(SHT31)
                 .expect("couldn't register gauge"),
-            humidity_gauge: metrics
-                .humidity
+            rel_humidity_gauge: metrics
+                .rel_humidity
+                .register(SHT31)
+                .expect("couldn't register gauge"),
+            abs_humidity_gauge: metrics
+                .abs_humidity
                 .register(SHT31)
                 .expect("couldn't register gauge"),
         })
@@ -88,11 +93,13 @@ impl Sensor for Scd30 {
         let sensor_scd30::Measurement { co2, temp, rh } = self
             .sensor
             .read_data()
-            .map_err(|err| anyhow!("error reading data: {err:?}"))?;
+            .map_err(|err| anyhow!("error reading data: {err:?}"))?; 
+        let abs_humidity = crate::units::absolute_humidity(temp as f64, rh as f64);
         self.co2_gauge.set_value(co2.into());
-        self.humidity_gauge.set_value(rh.into());
+        self.rel_humidity_gauge.set_value(rh.into());
+        self.abs_humidity_gauge.set_value(abs_humidity);
         self.temp_gauge.set_value(temp.into());
-        log::info!("CO2: {co2:>8.3} ppm, Temp: {temp:>3.3} \u{00B0}C, Humidity: {rh:>3.3}%");
+        log::info!("CO2: {co2:>8.3} ppm, Temp: {temp:>3.3} \u{00B0}C, Humidity: {abs_humidity:>3.3} g/𝑚³ ({rh:>3.3}%)");
 
         Ok(())
     }

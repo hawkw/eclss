@@ -13,11 +13,15 @@ pub struct SensorMetrics {
     #[serde(serialize_with = "serialize_metric")]
     pub co2: GaugeFamily<'static, MAX_METRICS, SensorLabel>,
     #[serde(serialize_with = "serialize_metric")]
-    pub humidity: GaugeFamily<'static, MAX_METRICS, SensorLabel>,
+    pub rel_humidity: GaugeFamily<'static, MAX_METRICS, SensorLabel>,
+    #[serde(serialize_with = "serialize_metric")]
+    pub abs_humidity: GaugeFamily<'static, MAX_METRICS, SensorLabel>,
     #[serde(serialize_with = "serialize_metric")]
     pub pressure: GaugeFamily<'static, MAX_METRICS, SensorLabel>,
     #[serde(serialize_with = "serialize_metric")]
     pub gas_resistance: GaugeFamily<'static, MAX_METRICS, SensorLabel>,
+    #[serde(serialize_with = "serialize_metric")]
+    pub tvoc: GaugeFamily<'static, MAX_METRICS, SensorLabel>,
     #[serde(serialize_with = "serialize_metric")]
     pub pm_conc: GaugeFamily<'static, 3, DiameterLabel>,
     #[serde(serialize_with = "serialize_metric")]
@@ -45,9 +49,13 @@ impl SensorMetrics {
                 .with_help("CO2 in parts per million (ppm).")
                 .with_unit("ppm")
                 .build_labeled::<_, SensorLabel, 4>(),
-            humidity: MetricBuilder::new("humidity_percent")
+            rel_humidity: MetricBuilder::new("humidity_percent")
                 .with_help("Relative humidity (RH) percentage.")
                 .with_unit("percent")
+                .build_labeled::<_, SensorLabel, 4>(),
+            abs_humidity: MetricBuilder::new("absolute_humidity_grams_m3")
+                .with_help("Absolute humidity in grams per cubic meter.")
+                .with_unit("g/m^3")
                 .build_labeled::<_, SensorLabel, 4>(),
             pressure: MetricBuilder::new("pressure_hpa")
                 .with_help("Barometric pressure, in hectopascals (hPa).")
@@ -56,6 +64,10 @@ impl SensorMetrics {
             gas_resistance: MetricBuilder::new("gas_resistance_ohms")
                 .with_help("BME680 VOC sensor resistance, in Ohms.")
                 .with_unit("Ohms")
+                .build_labeled::<_, SensorLabel, 4>(),
+            tvoc: MetricBuilder::new("tvoc_ppb")
+                .with_help("Total Volatile Organic Compounds (VOC) in parts per billion (ppb)")
+                .with_unit("ppb")
                 .build_labeled::<_, SensorLabel, 4>(),
             pm_conc: MetricBuilder::new("pm_concentration_ug_m3")
                 .with_help("Particulate matter concentration in ug/m^3")
@@ -74,7 +86,7 @@ impl SensorMetrics {
     pub fn fmt_metrics(&self, f: &mut impl fmt::Write) -> fmt::Result {
         self.temp.fmt_metric(f)?;
         self.co2.fmt_metric(f)?;
-        self.humidity.fmt_metric(f)?;
+        self.rel_humidity.fmt_metric(f)?;
         self.pressure.fmt_metric(f)?;
         self.gas_resistance.fmt_metric(f)?;
         self.sensor_errors.fmt_metric(f)?;

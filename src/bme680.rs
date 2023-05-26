@@ -5,7 +5,8 @@ pub struct Bme680 {
     sensor: bosch_bme680::Bme680<I2cRef<'static>, Ets>,
     pressure_gauge: &'static Gauge,
     temp_gauge: &'static Gauge,
-    humidity_gauge: &'static Gauge,
+    rel_humidity_gauge: &'static Gauge,
+    abs_humidity_gauge: &'static Gauge,
     gas_resistance_gauge: &'static Gauge,
 }
 
@@ -37,8 +38,12 @@ impl Sensor for Bme680 {
                 .register(Self::LABEL)
                 .expect("can't register"),
             temp_gauge: metrics.temp.register(Self::LABEL).expect("can't register"),
-            humidity_gauge: metrics
-                .humidity
+            rel_humidity_gauge: metrics
+                .rel_humidity
+                .register(Self::LABEL)
+                .expect("can't register"),
+            abs_humidity_gauge: metrics
+                .abs_humidity
                 .register(Self::LABEL)
                 .expect("can't register"),
             gas_resistance_gauge: metrics
@@ -61,10 +66,15 @@ impl Sensor for Bme680 {
         // pretty sure the `bosch-bme680` library is off by a factor of 100 when
         // representing pressures as hectopascals...
         let pressure = pressure / 100f32;
-        log::info!("[BME680]: Pressure: {pressure:>3.3} hPa, Temp: {temperature:>3.3} \u{00B0}C, Humidity: {humidity:>3.3}%");
+        // TODO(eliza): since we also know the pressure we could skip some of
+        // this hairy floating-point calculation...
+        let abs_humidity = crate::units::absolute_humidity(temperature as f64, humidity as f64);
+        log::info!("[BME680]: Pressure: {pressure:>3.3} hPa, Temp: {temperature:>3.3} \
+            \u{00B0}C, Humidity: {abs_humidity:>3.3} g/𝑚³ ({humidity:>3.3}%)");
         self.pressure_gauge.set_value(pressure.into());
         self.temp_gauge.set_value(temperature.into());
-        self.humidity_gauge.set_value(humidity.into());
+        self.rel_humidity_gauge.set_value(humidity.into());
+        self.abs_humidity_gauge.set_value(abs_humidity);
         if let Some(gas) = gas_resistance {
             log::info!("[BME680]: Gas resistance: {gas:>3.3} \u{2126}");
             self.gas_resistance_gauge.set_value(gas.into());

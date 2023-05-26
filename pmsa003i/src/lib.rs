@@ -9,7 +9,7 @@ pub struct Pmsa003i<I> {
 
 #[derive(Copy, Clone, Debug)]
 pub struct Reading {
-    /// Particulate concentrations in µg/𝑚3.
+    /// Particulate concentrations in µg/𝑚³.
     pub concentrations: Concentrations,
 
     /// Counts of particles of various diameters in 0.1L of air.
@@ -19,38 +19,38 @@ pub struct Reading {
     pub sensor_version: u8,
 }
 
-/// Particulate concentrations in µg/𝑚3.
+/// Particulate concentrations in µg/㎥.
 ///
 /// This is a separate struct from [`ParticleCounts`] so that they can have
 /// separate [`fmt::Display`] implementations.
 #[derive(Copy, Clone, Debug)]
 pub struct Concentrations {
-    /// PM1.0 concentration in µg/𝑚3, under environmental atmospheric
+    /// PM1.0 concentration in µg/𝑚³, under environmental atmospheric
     /// conditions.
     ///
     /// *Note*: I don't actually know what "under atmospheric environment" means
     /// but it says that in the datasheet. I am guessing this refers to humidity
     /// compensation?
     pub pm1_0: u16,
-    /// PM1.0 concentration in µg/𝑚3, under standard atmospheric conditions.
+    /// PM1.0 concentration in µg/𝑚³, under standard atmospheric conditions.
     pub pm1_0_standard: u16,
 
-    /// PM2.5 concentration in µg/𝑚3, under environmental atmospheric
+    /// PM2.5 concentration in µg/𝑚³, under environmental atmospheric
     /// conditions.
     ///
     /// Note: I don't actually know what "under atmospheric environment" means
     /// but it says that in the datasheet...
     pub pm2_5: u16,
-    /// PM2.5 concentration in µg/𝑚3, under standard atmospheric conditions.
+    /// PM2.5 concentration in µg/𝑚³, under standard atmospheric conditions.
     pub pm2_5_standard: u16,
 
-    /// PM10.0 concentration in µg/𝑚3, under environmental atmospheric
+    /// PM10.0 concentration in µg/𝑚³, under environmental atmospheric
     /// conditions.
     ///
     /// Note: I don't actually know what "under atmospheric environment" means
     /// but it says that in the datasheet...
     pub pm10_0: u16,
-    /// PM10.0 concentration in µg/𝑚3, under standard atmospheric conditions.
+    /// PM10.0 concentration in µg/𝑚³, under standard atmospheric conditions.
     pub pm10_0_standard: u16,
 }
 
@@ -66,7 +66,7 @@ pub struct ParticleCounts {
     pub particles_0_5um: u16,
     /// Number of particles with diameter >= 1.0 µm in 0.1L of air.
     pub particles_1_0um: u16,
-    /// Number of particles with diameter >= 2.5 µm in 0.1L of air.
+    /// Number of particles with diameter >= 2.5 µ𝑚 in 0.1L of air.
     pub particles_2_5um: u16,
     /// Number of particles with diameter >= 5.0 µm in 0.1L of air.
     pub particles_5_0um: u16,
@@ -209,7 +209,7 @@ impl fmt::Display for Reading {
 // === impl Concentrations ===
 
 impl Concentrations {
-    pub const UNIT: &str = "µg/𝑚3";
+    pub const UNIT: &str = "µg/𝑚³";
 }
 
 impl fmt::Display for Concentrations {
@@ -252,7 +252,7 @@ impl ParticleCounts {
 impl fmt::Display for ParticleCounts {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         const UNIT: &str = ParticleCounts::UNIT;
-        const UM: &str = "µm";
+        const UM: &str = "µ𝑚";
         let Self {
             particles_0_3um,
             particles_0_5um,
