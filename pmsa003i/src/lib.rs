@@ -223,21 +223,40 @@ impl fmt::Display for Concentrations {
             pm10_0,
             pm10_0_standard,
         } = self;
+        let (delim, leading, extra_pad) = if f.alternate() {
+            // let line_len =
+            //     // width of "PM1.0:  " or "PM10.0: "
+            //     8 +
+            //     // width of a number plus two spaces and a comma
+            //     width + 2 + UNIT.len() + 1 +
+            //     // width of a number plus two spaces and (std)""
+            //     width + 2 + UNIT.len() + 5;
+            ("\n\t", "\t", " ")
+        } else {
+            const DELIM: &str = ", ";
+            // let one_conc_len =
+            // // width of "PM1.0: " or "PM10.0:"
+            // 7 +
+            // // width of a number plus two spaces and a comma
+            // width + 2 + UNIT.len() + 1 +
+            // // width of a number plus two spaces and (std)""
+            // width + 2 + UNIT.len() + 5;
+            // let line_len =
+            //     // three concentrations
+            //     (one_conc_len * 3) +
+            //     1 + // one extra character for "PM10.0"
+            //     (DELIM.len() * 2);
+            (DELIM, "", "")
+        };
+        let width = f.width().unwrap_or(0);
 
-        write!(f, "PM 1.0: {pm1_0} {UNIT}")?;
-        if f.alternate() {
-            write!(f, " ({pm1_0_standard} {UNIT} std)")?;
-        }
+        write!(
+            f,
+            "{leading}{extra_pad}PM1.0: {pm1_0:>width$} {UNIT}, {pm1_0_standard:>width$} {UNIT} (std){delim}\
+            {extra_pad}PM2.5: {pm2_5:>width$} {UNIT}, {pm2_5_standard:>width$} {UNIT} (std){delim}\
+            PM10.0: {pm10_0:>width$} {UNIT}, {pm10_0_standard:>width$} {UNIT} (std)",
+        )?;
 
-        write!(f, ", PM 2.5: {pm2_5} {UNIT}")?;
-        if f.alternate() {
-            write!(f, " ({pm2_5_standard} {UNIT} std)")?;
-        }
-
-        write!(f, ", PM 10.0: {pm10_0} {UNIT}")?;
-        if f.alternate() {
-            write!(f, " ({pm10_0_standard} {UNIT} std)")?;
-        }
 
         Ok(())
     }
@@ -261,15 +280,24 @@ impl fmt::Display for ParticleCounts {
             particles_5_0um,
             particles_10_0um,
         } = self;
+        let (delim, leading, extra_pad) = if f.alternate() {
+            ("\n\t", "\n\t", " ")
+        } else {
+            (", ", " ", "")
+        };
+        // TODO(eliza): support using the formatter's fill char?
         write!(
             f,
-            "{UNIT} of air: \
-            >=0.3{UM}: {particles_0_3um}, \
-            >=0.5{UM}: {particles_0_5um}, \
-            >=1.0{UM}: {particles_1_0um}, \
-            >=2.5{UM}: {particles_2_5um}, \
-            >=5.0{UM}: {particles_5_0um}, \
-            >=10.0{UM}: {particles_10_0um}"
-        )
+            "{UNIT} of air:{leading}\
+            >= {extra_pad}0.3{UM}: {particles_0_3um:>width$}{delim}\
+            >= {extra_pad}0.5{UM}: {particles_0_5um:>width$}{delim}\
+            >= {extra_pad}1.0{UM}: {particles_1_0um:>width$}{delim}\
+            >= {extra_pad}2.5{UM}: {particles_2_5um:>width$}{delim}\
+            >= {extra_pad}5.0{UM}: {particles_5_0um:>width$}{delim}\
+            >= 10.0{UM}: {particles_10_0um:>width$}",
+            width = f.width().unwrap_or(0),
+        )?;
+
+        Ok(())
     }
 }
