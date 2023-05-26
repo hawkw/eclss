@@ -76,7 +76,7 @@ impl Sensor for Sgp30 {
             }
         }
 
-        log::info!(target: NAME, "eCO2: {co2eq_ppm} ppm, tVOC: {tvoc_ppb} ppb");
+        log::info!(target: NAME, "eCO2: {co2eq_ppm:>4} ppm, tVOC: {tvoc_ppb:>3} ppb");
 
         self.eco2_gauge.set_value(co2eq_ppm as f64);
         self.tvoc_gauge.set_value(tvoc_ppb as f64);
@@ -102,11 +102,11 @@ impl Sensor for Sgp30 {
         match sgp30::Humidity::from_f32(humidity) {
             Ok(val) => {
                 self.sensor.set_humidity(Some(&val))
-                    .map_err(|error| anyhow!("failed to set {NAME} absolute humidity to {humidity} g/𝑚³: {error:?}"))?;
-                log::info!(target: NAME, "updated absolute humidity to {humidity} g/𝑚³");
+                    .map_err(|error| anyhow!("failed to set {NAME} absolute humidity to {humidity:3.2} g/𝑚³: {error:?}"))?;
+                log::debug!(target: NAME, "updated absolute humidity to {humidity:3.2} g/𝑚³");
             }
             Err(err) => {
-                log::warn!(target: NAME, "absolute humidity {humidity} g/𝑚³ error: {err:?}")
+                log::warn!(target: NAME, "error converting absolute humidity {humidity:3.2} g/𝑚³ to fixpoint: {err:?}")
             }
         }
 

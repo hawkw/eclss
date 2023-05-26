@@ -105,12 +105,13 @@ impl Sensor for Scd30 {
         self.co2_gauge.set_value(co2.into());
         self.rel_humidity_gauge.set_value(rh.into());
         self.temp_gauge.set_value(temp.into());
-        log::info!(target: NAME, "CO2: {co2:>8.3} ppm, Temp: {temp:>3.3} \u{00B0}C, Rel. Humidity: {rh:>3.3}%");
+        log::info!(target: NAME, " CO2: {co2:>4.2} ppm");
+        log::info!(target: NAME, " Temp: {temp:>3.2} \u{00B0}C, Humidity: {rh:>3.2}%");
 
         if self.polls.0 % units::ABS_HUMIDITY_INTERVAL == 0 {
             let abs_humidity = units::absolute_humidity(temp, rh);
             self.abs_humidity_gauge.set_value(abs_humidity.into());
-            log::info!(target: NAME, "Absolute Humidity: {abs_humidity:>3.3} g/𝑚³");
+            log::info!(target: NAME, " Absolute Humidity: {abs_humidity:>3.2} g/𝑚³");
         }
 
         Ok(())

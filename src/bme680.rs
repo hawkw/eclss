@@ -74,23 +74,23 @@ impl Sensor for Bme680 {
         // representing pressures as hectopascals...
         let pressure = pressure / 100f32;
 
-        log::info!(target: NAME, "Pressure: {pressure:>3.3} hPa, Temp: {temperature:>3.3} \
-            \u{00B0}C, Rel. Humidity: ({humidity:>3.3}%)");
+        log::info!(target: NAME, "Pressure: {pressure:>4.2} hPa");
         self.pressure_gauge.set_value(pressure.into());
         self.temp_gauge.set_value(temperature.into());
         self.rel_humidity_gauge.set_value(humidity.into());
 
-        if self.polls.0 % units::ABS_HUMIDITY_INTERVAL == 0 {
-            let abs_humidity = units::absolute_humidity(temperature, humidity);
-            self.abs_humidity_gauge.set_value(abs_humidity.into());
-            log::info!(target: NAME, "Absolute Humidity: {abs_humidity:>3.3} g/𝑚³");
-        }
-
         if let Some(gas) = gas_resistance {
-            log::info!(target: NAME, "Gas resistance: {gas:>3.3} \u{2126}");
+            log::info!(target: NAME, "Gas resistance: {gas:>3.2} \u{2126}");
             self.gas_resistance_gauge.set_value(gas.into());
         }
 
+        log::info!(target: NAME, "Temp: {temperature:>3.2} \u{00B0}C, Humidity: {humidity:>3.2}%");
+
+        if self.polls.0 % units::ABS_HUMIDITY_INTERVAL == 0 {
+            let abs_humidity = units::absolute_humidity(temperature, humidity);
+            self.abs_humidity_gauge.set_value(abs_humidity.into());
+            log::info!(target: NAME, "Absolute Humidity: {abs_humidity:>3.2} g/𝑚³");
+        }
         Ok(())
     }
 
