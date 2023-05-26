@@ -51,8 +51,8 @@ impl Sensor for Pmsa003i {
             .read()
             .map_err(|error| anyhow::anyhow!("error reading from {NAME}: {error:?}"))?;
 
-        log::info!("[{NAME}]: particulate concentrations: {concentrations:#}");
-        log::info!("[{NAME}]: particulates {counts:#}");
+        log::info!("[{NAME}]: particulate concentrations:\n{concentrations:>#3}");
+        log::info!("[{NAME}]: particulates {counts:>#3}");
 
         macro_rules! set_metrics {
             ($src:ident => $($name:ident),+) => {
