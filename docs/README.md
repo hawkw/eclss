@@ -29,13 +29,20 @@ format][prom].
   > isn't present on the I<sup>2</sup>C bus. of course, if you're missing a
   > particular sensor, you won't be collecting the data it measures :)
 
-  + **[Sensirion SCD30][scd30] NDIR CO<sup>2</sup> sensor** (with temperature
+  + **[Sensirion SCD30][scd30] NDIR CO<sub>2</sub> sensor** (with temperature
     and relative humidity).
   + **[Bosch BME680][bme680] temperature, barometric pressure, humidity, and
     VOC** (MOX gas sensor). i meant to get the slightly newer BME688 breakout
     but i clicked the wrong one. a BME688 would also work.
   + **[Plantower PMSA003I][pmsa003i] particulate matter sensor**, measuring
     particulate matter concetrations.
+  + **[Sensirion SGP30][sgp30] tVOC sensor**: this sensor measures total
+    volatile organic compounds (tVOC). it also calculates an equivalent
+    CO<sub>2</sub> (eCO<sub>2</sub>) measurement based on the tVOC measurement.
+    in my experience, these eCO<sub>2</sub> numbers are *wildly* different from
+    the "real" CO<sub>2</sub> measurements provided by a sensor like the SCD30.
+    i wouldn't treat them as an authoritative measurement of CO<sub>2</sub>
+    concentration, but they might still be interesting
   + **more sensors coming soon!** there are several different I<sup>2</sup>C
     air quality sensors, and even more different temperature/pressure/humidity
     sensors, on the market. eventually, i'd like to add drivers for most of the
@@ -55,6 +62,7 @@ format][prom].
 [scd30]: https://www.adafruit.com/product/4867
 [bme680]: https://www.adafruit.com/product/3660
 [pmsa003i]: https://www.adafruit.com/product/4632
+[sgp30]: https://www.adafruit.com/product/3709
 [TCA4307]: https://www.adafruit.com/product/5159
 [stemmaqt]: https://learn.adafruit.com/introducing-adafruit-stemma-qt/what-is-stemma-qt
 
