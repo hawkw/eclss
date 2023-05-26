@@ -71,6 +71,7 @@ tinymetrics = { git = "https://github.com/hawkw/tinymetrics", default-features =
     "std",
 ]}
 pmsa003i = { path = "pmsa003i" }
+sgp30 = "0.3.1"
 
 [build-dependencies]
 embuild = "0.31.0"
