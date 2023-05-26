@@ -18,6 +18,9 @@ pub fn absolute_humidity(temp_c: f32, rel_humidity_percent: f32) -> f32 {
     // see https://carnotcycle.wordpress.com/2012/08/04/how-to-convert-relative-humidity-to-absolute-humidity/
 }
 
+// calculate absolute humidity every 5 polls, to avoid expensive floating point
+// math.
+pub(crate) const ABS_HUMIDITY_INTERVAL: usize = 5;
 
 #[cfg(test)]
 mod tests {

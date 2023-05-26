@@ -2,9 +2,11 @@ use crate::{
     metrics::{self, Gauge},
     sensor::Sensor,
     I2cBus, I2cRef, SensorMetrics,
+    units,
 };
 use anyhow::anyhow;
 use esp_idf_hal::{delay::Ets, i2c::I2cError};
+use std::num::Wrapping;
 
 pub struct Scd30 {
     sensor: sensor_scd30::Scd30<I2cRef<'static>, Ets, I2cError>,
@@ -13,6 +15,7 @@ pub struct Scd30 {
     temp_gauge: &'static Gauge,
     rel_humidity_gauge: &'static Gauge,
     abs_humidity_gauge: &'static Gauge,
+    polls: Wrapping<usize>,
 }
 
 #[derive(Debug, Clone)]
@@ -29,10 +32,12 @@ pub enum ControlMessage {
     SoftReset,
 }
 
+const NAME: &str = "SCD30";
+
 impl Sensor for Scd30 {
     type ControlMessage = ControlMessage;
 
-    const NAME: &'static str = "SCD30";
+    const NAME: &'static str = NAME;
     fn bringup(busman: &'static I2cBus, metrics: &'static SensorMetrics) -> anyhow::Result<Self> {
         const INITIAL_INTERVAL_SECS: u16 = 2;
         const SHT31: metrics::SensorLabel = metrics::SensorLabel("SHT31");
@@ -78,6 +83,7 @@ impl Sensor for Scd30 {
                 .abs_humidity
                 .register(SHT31)
                 .expect("couldn't register gauge"),
+            polls: Wrapping(0),
         })
     }
 
@@ -94,12 +100,18 @@ impl Sensor for Scd30 {
             .sensor
             .read_data()
             .map_err(|err| anyhow!("error reading data: {err:?}"))?;
-        let abs_humidity = crate::units::absolute_humidity(temp, rh);
+        self.polls += Wrapping(1);
+
         self.co2_gauge.set_value(co2.into());
         self.rel_humidity_gauge.set_value(rh.into());
-        self.abs_humidity_gauge.set_value(abs_humidity.into());
         self.temp_gauge.set_value(temp.into());
-        log::info!("CO2: {co2:>8.3} ppm, Temp: {temp:>3.3} \u{00B0}C, Humidity: {abs_humidity:>3.3} g/𝑚³ ({rh:>3.3}%)");
+        log::info!("[{NAME}] CO2: {co2:>8.3} ppm, Temp: {temp:>3.3} \u{00B0}C, Rel. Humidity: {rh:>3.3}%");
+
+        if self.polls.0 % units::ABS_HUMIDITY_INTERVAL == 0 {
+            let abs_humidity = units::absolute_humidity(temp, rh);
+            self.abs_humidity_gauge.set_value(abs_humidity.into());
+            log::info!("[{NAME}]: Absolute Humidity: {abs_humidity:>3.3} g/𝑚³");
+        }
 
         Ok(())
     }

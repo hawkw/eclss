@@ -11,7 +11,9 @@ pub struct SensorMetrics {
     #[serde(serialize_with = "serialize_metric")]
     pub temp: GaugeFamily<'static, MAX_METRICS, SensorLabel>,
     #[serde(serialize_with = "serialize_metric")]
-    pub co2: GaugeFamily<'static, MAX_METRICS, SensorLabel>,
+    pub co2: GaugeFamily<'static, 2, SensorLabel>,
+    #[serde(serialize_with = "serialize_metric")]
+    pub eco2: GaugeFamily<'static, 2, SensorLabel>,
     #[serde(serialize_with = "serialize_metric")]
     pub rel_humidity: GaugeFamily<'static, MAX_METRICS, SensorLabel>,
     #[serde(serialize_with = "serialize_metric")]
@@ -48,7 +50,11 @@ impl SensorMetrics {
             co2: MetricBuilder::new("co2_ppm")
                 .with_help("CO2 in parts per million (ppm).")
                 .with_unit("ppm")
-                .build_labeled::<_, SensorLabel, 4>(),
+                .build_labeled::<_, SensorLabel, 2>(),
+            eco2: MetricBuilder::new("eco2_ppm")
+                .with_help("VOC equivalent CO2 (eCO2) calculated by a tVOC sensor, in parts per million (ppm).")
+                .with_unit("ppm")
+                .build_labeled::<_, SensorLabel, 2>(),
             rel_humidity: MetricBuilder::new("humidity_percent")
                 .with_help("Relative humidity (RH) percentage.")
                 .with_unit("percent")
