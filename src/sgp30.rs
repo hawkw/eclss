@@ -26,12 +26,12 @@ impl Sensor for Sgp30 {
         // the adafruit breakout board has this I2C address.
         const ADDR: u8 = 0x58;
 
-        log::info!("connecting to {NAME}...");
+        log::info!(target: NAME, "connecting to {NAME}...");
         let i2c = busman.acquire_i2c();
         let mut sensor = sgp30::Sgp30::new(i2c, ADDR, Ets);
 
         let version = sensor.get_feature_set().map_err(|error| anyhow!("failed to get {NAME} feature set: {error:?}"))?;
-        log::info!("connected to {NAME}: version: {version:?}");
+        log::info!(target: NAME, "connected to {NAME}: version: {version:?}");
 
         // run the self-test
         let selftest = sensor.selftest().map_err(|error| anyhow!("failed to run {NAME} self-test: {error:?}"))?;
@@ -66,7 +66,7 @@ impl Sensor for Sgp30 {
         // measurements until the init phase is done.
         if self.init {
             let elapsed = self.started_at.elapsed();
-            log::info!("[{NAME}] in init phase for {elapsed:?} ({} measurements)...", self.polls);
+            log::info!(target: NAME, "in init phase for {elapsed:?} ({} measurements)...", self.polls);
             // ignore the measurement until we have exited the
             // initialization phase
             if self.polls.0 > 15 {
@@ -76,7 +76,7 @@ impl Sensor for Sgp30 {
             }
         }
 
-        log::info!("[{NAME}] eCO2: {co2eq_ppm} ppm, tVOC: {tvoc_ppb} ppb");
+        log::info!(target: NAME, "eCO2: {co2eq_ppm} ppm, tVOC: {tvoc_ppb} ppb");
 
         self.eco2_gauge.set_value(co2eq_ppm as f64);
         self.tvoc_gauge.set_value(tvoc_ppb as f64);
@@ -103,10 +103,10 @@ impl Sensor for Sgp30 {
             Ok(val) => {
                 self.sensor.set_humidity(Some(&val))
                     .map_err(|error| anyhow!("failed to set {NAME} absolute humidity to {humidity} g/𝑚³: {error:?}"))?;
-                log::info!("[{NAME}] updated absolute humidity to {humidity} g/𝑚³");
+                log::info!(target: NAME, "updated absolute humidity to {humidity} g/𝑚³");
             }
             Err(err) => {
-                log::warn!("[{NAME}] absolute humidity {humidity} g/𝑚³ error: {err:?}")
+                log::warn!(target: NAME, "absolute humidity {humidity} g/𝑚³ error: {err:?}")
             }
         }
 

@@ -25,7 +25,7 @@ impl Sensor for Pmsa003i {
     const NAME: &'static str = NAME;
 
     fn bringup(busman: &'static I2cBus, metrics: &'static SensorMetrics) -> anyhow::Result<Self> {
-        log::info!("connecting to {}", Self::NAME);
+        log::info!(target: NAME, "connecting to {}", Self::NAME);
         let i2c = busman.acquire_i2c();
         Ok(Self {
             sensor: pmsa003i::Pmsa003i::new(i2c),
@@ -51,8 +51,8 @@ impl Sensor for Pmsa003i {
             .read()
             .map_err(|error| anyhow::anyhow!("error reading from {NAME}: {error:?}"))?;
 
-        log::info!("[{NAME}]: particulate concentrations:\n{concentrations:>#3}");
-        log::info!("[{NAME}]: particulates {counts:>#3}");
+        log::info!(target: NAME, "particulate concentrations:\n{concentrations:>#3}");
+        log::info!(target: NAME, "particulates {counts:>#3}");
 
         macro_rules! set_metrics {
             ($src:ident => $($name:ident),+) => {

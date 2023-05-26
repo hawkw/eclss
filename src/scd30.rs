@@ -51,18 +51,18 @@ impl Sensor for Scd30 {
         let firmware = sensor
             .firmware_version()
             .map_err(|error| anyhow!("failed to read SCD30 firmware version: {error:?}"))?;
-        log::info!("connected to SCD30; firmware: {firmware}");
+        log::info!(target: NAME, "connected to SCD30; firmware: {firmware}");
 
         sensor
             .set_measurement_interval(INITIAL_INTERVAL_SECS)
             .map_err(|error| anyhow!("failed to set SCD30 measurement interval: {error:?}"))?;
-        log::info!("set SCD30 measurement interval to {INITIAL_INTERVAL_SECS} seconds");
+        log::info!(target: NAME, "set SCD30 measurement interval to {INITIAL_INTERVAL_SECS} seconds");
 
         sensor.start_continuous(0).map_err(|error| {
             anyhow!("failed to start SCD30 continuous sampling mode: {error:?}")
         })?; // TODO(eliza): figure out pressure compensation.
 
-        log::info!("enabled SCD30 continuous sampling mode");
+        log::info!(target: NAME, "enabled SCD30 continuous sampling mode");
 
         Ok(Self {
             sensor,
@@ -105,12 +105,12 @@ impl Sensor for Scd30 {
         self.co2_gauge.set_value(co2.into());
         self.rel_humidity_gauge.set_value(rh.into());
         self.temp_gauge.set_value(temp.into());
-        log::info!("[{NAME}] CO2: {co2:>8.3} ppm, Temp: {temp:>3.3} \u{00B0}C, Rel. Humidity: {rh:>3.3}%");
+        log::info!(target: NAME, "CO2: {co2:>8.3} ppm, Temp: {temp:>3.3} \u{00B0}C, Rel. Humidity: {rh:>3.3}%");
 
         if self.polls.0 % units::ABS_HUMIDITY_INTERVAL == 0 {
             let abs_humidity = units::absolute_humidity(temp, rh);
             self.abs_humidity_gauge.set_value(abs_humidity.into());
-            log::info!("[{NAME}]: Absolute Humidity: {abs_humidity:>3.3} g/𝑚³");
+            log::info!(target: NAME, "Absolute Humidity: {abs_humidity:>3.3} g/𝑚³");
         }
 
         Ok(())
@@ -126,13 +126,13 @@ impl Sensor for Scd30 {
                 self.sensor.set_frc(ppm).map_err(|error| {
                     anyhow!("failed to recalibrate SCD30 to {ppm} ppm: {error:?}")
                 })?;
-                log::info!("recalibrated SCD30 at {ppm} ppm");
+                log::info!(target: NAME, "recalibrated SCD30 at {ppm} ppm");
             }
             &ControlMessage::SetAltOffset(altitude) => {
                 self.sensor.set_alt_offset(altitude).map_err(|error| {
                     anyhow!("failed to set SCD30 altitude offset to {altitude}: {error:?}")
                 })?;
-                log::info!("set altitude offset to {altitude}");
+                log::info!(target: NAME, "set altitude offset to {altitude}");
             }
             &ControlMessage::SetMeasurementInterval { secs } => {
                 anyhow::ensure!(secs > 0);
@@ -143,13 +143,13 @@ impl Sensor for Scd30 {
                             "failed to set SCD30 measurement interval {secs} seconds: {error:?}"
                         )
                     })?;
-                log::info!("set measurement interval to {secs} seconds");
+                log::info!(target: NAME, "set measurement interval to {secs} seconds");
             }
             ControlMessage::SoftReset => {
                 self.sensor
                     .soft_reset()
                     .map_err(|error| anyhow!("failed to trigger SCD30 soft reset {error:?}"))?;
-                log::info!("soft reset!");
+                log::info!(target: NAME, "soft reset!");
             }
         }
 

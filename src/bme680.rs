@@ -21,7 +21,7 @@ impl Sensor for Bme680 {
 
     fn bringup(busman: &'static I2cBus, metrics: &'static SensorMetrics) -> anyhow::Result<Self> {
         let config = bosch_bme680::Configuration::default();
-        log::info!("connecting to BME680 with config {config:#?}");
+        log::info!(target: NAME, "connecting to BME680 with config {config:#?}");
         let i2c = busman.acquire_i2c();
         let sensor = bosch_bme680::Bme680::new(
             i2c,
@@ -74,7 +74,7 @@ impl Sensor for Bme680 {
         // representing pressures as hectopascals...
         let pressure = pressure / 100f32;
 
-        log::info!("[{NAME}]: Pressure: {pressure:>3.3} hPa, Temp: {temperature:>3.3} \
+        log::info!(target: NAME, "Pressure: {pressure:>3.3} hPa, Temp: {temperature:>3.3} \
             \u{00B0}C, Rel. Humidity: ({humidity:>3.3}%)");
         self.pressure_gauge.set_value(pressure.into());
         self.temp_gauge.set_value(temperature.into());
@@ -83,11 +83,11 @@ impl Sensor for Bme680 {
         if self.polls.0 % units::ABS_HUMIDITY_INTERVAL == 0 {
             let abs_humidity = units::absolute_humidity(temperature, humidity);
             self.abs_humidity_gauge.set_value(abs_humidity.into());
-            log::info!("[{NAME}]: Absolute Humidity: {abs_humidity:>3.3} g/𝑚³");
+            log::info!(target: NAME, "Absolute Humidity: {abs_humidity:>3.3} g/𝑚³");
         }
 
         if let Some(gas) = gas_resistance {
-            log::info!("[{NAME}]: Gas resistance: {gas:>3.3} \u{2126}");
+            log::info!(target: NAME, "Gas resistance: {gas:>3.3} \u{2126}");
             self.gas_resistance_gauge.set_value(gas.into());
         }
 
