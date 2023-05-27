@@ -1,4 +1,4 @@
-use crate::{actor, net, scd30, sensor, SensorMetrics};
+use crate::{actor, net, sensor::{self, scd30}, SensorMetrics};
 use anyhow::Context;
 use embedded_svc::{
     http::{

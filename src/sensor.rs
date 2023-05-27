@@ -10,7 +10,11 @@ use std::fmt;
 use tinymetrics::registry::RegistryMap;
 
 mod status;
-pub use self::status::{Status, StatusCell};
+mod bme680;
+mod pmsa003i;
+pub mod scd30;
+mod sgp30;
+pub use self::{sgp30::Sgp30, scd30::Scd30, pmsa003i::Pmsa003i, bme680::Bme680, status::{Status, StatusCell}};
 
 /// Represents a pollable I2C sensor.
 pub trait Sensor: Sized {
