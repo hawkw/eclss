@@ -108,6 +108,8 @@ impl Sensor for Scd30 {
         log::info!(target: NAME, " CO2: {co2:>4.2} ppm");
         log::info!(target: NAME, " Temp: {temp:>3.2} \u{00B0}C, Humidity: {rh:>3.2}%");
 
+        // TODO(eliza): consider moving this calculation to a low-priority
+        // background task that just runs every 5s?
         if self.polls.0 % units::ABS_HUMIDITY_INTERVAL == 0 {
             let abs_humidity = units::absolute_humidity(temp, rh);
             self.abs_humidity_gauge.set_value(abs_humidity.into());

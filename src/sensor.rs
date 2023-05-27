@@ -11,10 +11,11 @@ use tinymetrics::registry::RegistryMap;
 
 mod status;
 mod bme680;
+mod ens160;
 mod pmsa003i;
 pub mod scd30;
 mod sgp30;
-pub use self::{sgp30::Sgp30, scd30::Scd30, pmsa003i::Pmsa003i, bme680::Bme680, status::{Status, StatusCell}};
+pub use self::{sgp30::Sgp30, scd30::Scd30, pmsa003i::Pmsa003i, bme680::Bme680, ens160::Ens160, status::{Status, StatusCell}};
 
 /// Represents a pollable I2C sensor.
 pub trait Sensor: Sized {
@@ -86,8 +87,9 @@ impl Manager {
             })?;
 
         let mut sensor = {
+            log::info!(target: S::NAME, "bringing up {}...", S::NAME);
+            let mut backoff = ExpBackoff::new(self.retry_backoff).with_target(S::NAME);
             loop {
-                let mut backoff = ExpBackoff::new(self.retry_backoff).with_target(S::NAME);
                 match S::bringup(self.busman, self.metrics) {
                     Ok(sensor) => {
                         log::info!(target: S::NAME, "successfully brought up {}!", S::NAME);

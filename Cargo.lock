@@ -445,6 +445,7 @@ dependencies = [
  "embassy-time",
  "embedded-svc",
  "embuild",
+ "ens160",
  "esp-idf-hal",
  "esp-idf-svc",
  "esp-idf-sys",
@@ -603,6 +604,16 @@ dependencies = [
  "toml",
  "ureq",
  "which",
+]
+
+[[package]]
+name = "ens160"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "565dfb0c5f76721a9aec562bd47d1d0e3ca4249081e9cfc5b150a2cef2f3ddac"
+dependencies = [
+ "bitfield",
+ "embedded-hal 0.2.7",
 ]
 
 [[package]]

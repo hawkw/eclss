@@ -78,7 +78,7 @@ fn main() -> anyhow::Result<()> {
         retry_backoff: Duration::from_secs(1),
     };
 
-    let exec: task::executor::EspExecutor<8, edge_executor::Local> =
+    let exec: task::executor::EspExecutor<16, edge_executor::Local> =
         task::executor::EspExecutor::new();
     let mut tasks = heapless::Vec::new();
     exec.spawn_local_collect(wifi.run(sysloop.clone(), neopixel), &mut tasks)
@@ -102,7 +102,14 @@ fn main() -> anyhow::Result<()> {
     let _sgp30_control = {
         let (tx, rx) = actor::channel(10);
         exec.spawn_local_collect(sensor_mangler.run::<sensor::Sgp30>(rx), &mut tasks)
-            .context("failed to spawn SCD30 task")?;
+            .context("failed to spawn SGP30 task")?;
+        tx
+    };
+    let _ens160_control = {
+        let (tx, rx) = actor::channel(10);
+        exec.spawn_local_collect(sensor_mangler.run::<sensor::Ens160>(rx), &mut tasks)
+            .context("failed to spawn ENS160 task")?;
+        log::info!("spawned ENS160 task");
         tx
     };
 

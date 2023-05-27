@@ -4,16 +4,16 @@ use serde::{Serialize, Serializer};
 use std::fmt;
 use tinymetrics::{CounterFamily, FmtLabels, GaugeFamily, MetricBuilder, MetricFamily};
 
-const MAX_METRICS: usize = 4;
+pub const MAX_METRICS: usize = 4;
 
 #[derive(Debug, serde::Serialize)]
 pub struct SensorMetrics {
     #[serde(serialize_with = "serialize_metric")]
     pub temp: GaugeFamily<'static, MAX_METRICS, SensorLabel>,
     #[serde(serialize_with = "serialize_metric")]
-    pub co2: GaugeFamily<'static, 2, SensorLabel>,
+    pub co2: GaugeFamily<'static, MAX_METRICS, SensorLabel>,
     #[serde(serialize_with = "serialize_metric")]
-    pub eco2: GaugeFamily<'static, 2, SensorLabel>,
+    pub eco2: GaugeFamily<'static, MAX_METRICS, SensorLabel>,
     #[serde(serialize_with = "serialize_metric")]
     pub rel_humidity: GaugeFamily<'static, MAX_METRICS, SensorLabel>,
     #[serde(serialize_with = "serialize_metric")]
@@ -29,7 +29,7 @@ pub struct SensorMetrics {
     #[serde(serialize_with = "serialize_metric")]
     pub pm_count: GaugeFamily<'static, 6, DiameterLabel>,
     #[serde(serialize_with = "serialize_metric")]
-    pub sensor_errors: CounterFamily<'static, MAX_METRICS, SensorLabel>,
+    pub sensor_errors: CounterFamily<'static, 16, SensorLabel>,
 }
 
 #[derive(Debug, Eq, PartialEq, serde::Serialize)]
@@ -46,35 +46,35 @@ impl SensorMetrics {
             temp: MetricBuilder::new("temperature_degrees_celcius")
                 .with_help("Temperature in degrees Celcius.")
                 .with_unit("celcius")
-                .build_labeled::<_, SensorLabel, 4>(),
+                .build_labeled::<_, SensorLabel, MAX_METRICS>(),
             co2: MetricBuilder::new("co2_ppm")
                 .with_help("CO2 in parts per million (ppm).")
                 .with_unit("ppm")
-                .build_labeled::<_, SensorLabel, 2>(),
+                .build_labeled::<_, SensorLabel, MAX_METRICS>(),
             eco2: MetricBuilder::new("eco2_ppm")
                 .with_help("VOC equivalent CO2 (eCO2) calculated by a tVOC sensor, in parts per million (ppm).")
                 .with_unit("ppm")
-                .build_labeled::<_, SensorLabel, 2>(),
+                .build_labeled::<_, SensorLabel, MAX_METRICS>(),
             rel_humidity: MetricBuilder::new("humidity_percent")
                 .with_help("Relative humidity (RH) percentage.")
                 .with_unit("percent")
-                .build_labeled::<_, SensorLabel, 4>(),
+                .build_labeled::<_, SensorLabel, MAX_METRICS>(),
             abs_humidity: MetricBuilder::new("absolute_humidity_grams_m3")
                 .with_help("Absolute humidity in grams per cubic meter.")
                 .with_unit("g/m^3")
-                .build_labeled::<_, SensorLabel, 4>(),
+                .build_labeled::<_, SensorLabel, MAX_METRICS>(),
             pressure: MetricBuilder::new("pressure_hpa")
                 .with_help("Barometric pressure, in hectopascals (hPa).")
                 .with_unit("hPa")
-                .build_labeled::<_, SensorLabel, 4>(),
+                .build_labeled::<_, SensorLabel, MAX_METRICS>(),
             gas_resistance: MetricBuilder::new("gas_resistance_ohms")
                 .with_help("BME680 VOC sensor resistance, in Ohms.")
                 .with_unit("Ohms")
-                .build_labeled::<_, SensorLabel, 4>(),
+                .build_labeled::<_, SensorLabel, MAX_METRICS>(),
             tvoc: MetricBuilder::new("tvoc_ppb")
                 .with_help("Total Volatile Organic Compounds (VOC) in parts per billion (ppb)")
                 .with_unit("ppb")
-                .build_labeled::<_, SensorLabel, 4>(),
+                .build_labeled::<_, SensorLabel, MAX_METRICS>(),
             pm_conc: MetricBuilder::new("pm_concentration_ug_m3")
                 .with_help("Particulate matter concentration in ug/m^3")
                 .with_unit("ug/m^3")
@@ -85,7 +85,7 @@ impl SensorMetrics {
                 .build_labeled::<_, DiameterLabel, 6>(),
             sensor_errors: MetricBuilder::new("sensor_error_count")
                 .with_help("Count of I2C errors that occurred while talking to a sensor")
-                .build_labeled::<_, SensorLabel, 4>(),
+                .build_labeled::<_, SensorLabel, 16>(),
         }
     }
 
