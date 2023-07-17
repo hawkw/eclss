@@ -59,7 +59,7 @@ edge-executor = { version = "0.3.0" }
 ens160 = "0.1.2"
 futures = { version = "0.3.25" }
 heapless = "0.7.16"
-log = { version = "0.4", features = ["max_level_info"] }
+log = { version = "0.4" }
 sensor-scd30 = { version = "0.4.0", default-features = false }
 serde = { version = "1", default-features = false, features = ["derive"] }
 serde_urlencoded = "0.7.1"

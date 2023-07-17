@@ -71,29 +71,34 @@ impl Sensor for Ens160 {
 
     fn poll(&mut self) -> anyhow::Result<()> {
         let status = self.sensor.get_status().map_err(|error| anyhow::anyhow!("error reading {NAME} status: {error:?}"))?;
-        self.polls += 1;
 
         // if !status.running_normally() {
         //     return Err(anyhow::anyhow!("ENS160 is not running normally! status: {status:#?}"))
         // }
 
-        if !status.data_is_ready() {
-            log::info!(target: NAME, "no data yet (status={status:?})...");
-            return Ok(());
-        }
-
         if self.polls.0 % 5 == 0 {
             self.calibrate()?;
         }
 
+        if !(status.new_data_in_gpr() || status.data_is_ready())  {
+            log::info!(target: NAME, "no data yet (status={status:?})...");
+            return Ok(());
+        }
+
         let tvoc = self.sensor.get_tvoc().map_err(|error| anyhow::anyhow!("error reading {NAME} TVOC: {error:?}"))?;
         let eco2 = *self.sensor.get_eco2().map_err(|error| anyhow::anyhow!("error reading {NAME} eCO2: {error:?}"))?;
-        let aqi = self.sensor.get_airquality_index().map_err(|error| anyhow::anyhow!("error reading {NAME} AQI: {error:?}"))?;
+        // apparently this will sometimes panic in the ENS160 library, as the
+        // sensor returns a value that isn't in the expected codes (maybe if it
+        // isn't ready?):
+        //  https://github.com/teamplayer3/ens160/blob/67d965119ccbf93374b85d8be59e747fb47c7ee8/src/lib.rs#L196
+        // let aqi = self.sensor.get_airquality_index().map_err(|error| anyhow::anyhow!("error reading {NAME} AQI: {error:?}"))?;
 
-        log::info!(target: NAME, "eCO2: {eco2:>4} ppm, tVOC: {tvoc:>3} ppb, AQI: {aqi:?}");
+        log::info!(target: NAME, "eCO2: {eco2:>4} ppm, tVOC: {tvoc:>3} ppb");
+
         if let ens160::Validity::NormalOperation = status.validity_flag() {
             self.tvoc_gauge.set_value(tvoc.into());
             self.eco2_gauge.set_value(eco2.into());
+            self.polls += 1;
         } else {
             log::info!(target: NAME, "data is invalid! status: {status:#?}");
         }
