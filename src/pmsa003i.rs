@@ -24,7 +24,7 @@ impl Sensor for Pmsa003i {
 
     const NAME: &'static str = NAME;
 
-    fn bringup(busman: &'static I2cBus, metrics: &'static SensorMetrics) -> anyhow::Result<Self> {
+    fn init(busman: &'static I2cBus, metrics: &'static SensorMetrics) -> anyhow::Result<Self> {
         log::info!(target: NAME, "connecting to {}", Self::NAME);
         let i2c = busman.acquire_i2c();
         Ok(Self {

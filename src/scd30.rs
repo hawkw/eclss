@@ -1,8 +1,7 @@
 use crate::{
     metrics::{self, Gauge},
     sensor::Sensor,
-    I2cBus, I2cRef, SensorMetrics,
-    units,
+    units, I2cBus, I2cRef, SensorMetrics,
 };
 use anyhow::anyhow;
 use esp_idf_hal::{delay::Ets, i2c::I2cError};
@@ -38,7 +37,7 @@ impl Sensor for Scd30 {
     type ControlMessage = ControlMessage;
 
     const NAME: &'static str = NAME;
-    fn bringup(busman: &'static I2cBus, metrics: &'static SensorMetrics) -> anyhow::Result<Self> {
+    fn init(busman: &'static I2cBus, metrics: &'static SensorMetrics) -> anyhow::Result<Self> {
         const INITIAL_INTERVAL_SECS: u16 = 2;
         const SHT31: metrics::SensorLabel = metrics::SensorLabel("SHT31");
 

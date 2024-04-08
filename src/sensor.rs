@@ -28,7 +28,7 @@ pub trait Sensor: Sized {
     const NAME: &'static str;
     const LABEL: metrics::SensorLabel = metrics::SensorLabel(Self::NAME);
 
-    fn bringup(i2c: &'static I2cBus, metrics: &'static SensorMetrics) -> anyhow::Result<Self>;
+    fn init(i2c: &'static I2cBus, metrics: &'static SensorMetrics) -> anyhow::Result<Self>;
 
     fn poll(&mut self) -> anyhow::Result<()>;
 
@@ -51,11 +51,11 @@ pub trait Sensor: Sized {
 
 /// A sensor mangler for pollable I2C [`Sensor`]s.
 ///
-/// A sensor manager handles sensor bringup, polls the sensor at the provided
-/// `poll_interval`, and backs off when the sensor is unavailable. This allows a
-/// limited form of hot-plugability for I2C sensors: although the kinds of
-/// sensors that may be on the bus must be known in advance, they can be
-/// disconnected after the device starts without requiring a complete reset.
+/// A sensor manager handles sensor initialization, polls the sensor at the
+/// provided `poll_interval`, and backs off when the sensor is unavailable. This
+/// allows a  limited form of hot-plugability for I2C sensors: although the
+/// kinds of sensors that may be on the bus must be known in advance, they can
+/// be disconnected after the device starts without requiring a complete reset.
 #[derive(Copy, Clone)]
 pub struct Manager {
     pub metrics: &'static SensorMetrics,
@@ -84,7 +84,7 @@ impl Manager {
         let mut sensor = {
             loop {
                 let mut backoff = ExpBackoff::new(self.retry_backoff).with_target(S::NAME);
-                match S::bringup(self.busman, self.metrics) {
+                match S::init(self.busman, self.metrics) {
                     Ok(sensor) => {
                         log::info!(target: S::NAME, "successfully brought up {}!", S::NAME);
                         status.set_status(Status::Up);

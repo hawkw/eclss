@@ -1,4 +1,4 @@
-use crate::{metrics::Gauge, sensor::Sensor, I2cBus, I2cRef, SensorMetrics, units};
+use crate::{metrics::Gauge, sensor::Sensor, units, I2cBus, I2cRef, SensorMetrics};
 use esp_idf_hal::delay::Ets;
 use std::num::Wrapping;
 
@@ -19,7 +19,7 @@ impl Sensor for Bme680 {
 
     const NAME: &'static str = NAME;
 
-    fn bringup(busman: &'static I2cBus, metrics: &'static SensorMetrics) -> anyhow::Result<Self> {
+    fn init(busman: &'static I2cBus, metrics: &'static SensorMetrics) -> anyhow::Result<Self> {
         let config = bosch_bme680::Configuration::default();
         log::info!(target: NAME, "connecting to BME680 with config {config:#?}");
         let i2c = busman.acquire_i2c();

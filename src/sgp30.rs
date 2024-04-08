@@ -1,9 +1,13 @@
-use crate::{metrics::{SensorLabel,Gauge}, sensor::Sensor, I2cBus, I2cRef, SensorMetrics};
-use esp_idf_hal::delay::Ets;
+use crate::{
+    metrics::{Gauge, SensorLabel},
+    sensor::Sensor,
+    I2cBus, I2cRef, SensorMetrics,
+};
 use anyhow::anyhow;
-use tinymetrics::GaugeFamily;
-use std::{time::Instant, num::Wrapping};
 use embassy_time::Duration;
+use esp_idf_hal::delay::Ets;
+use std::{num::Wrapping, time::Instant};
+use tinymetrics::GaugeFamily;
 
 pub struct Sgp30 {
     sensor: sgp30::Sgp30<I2cRef<'static>, Ets>,
@@ -22,7 +26,7 @@ impl Sensor for Sgp30 {
 
     const NAME: &'static str = NAME;
 
-    fn bringup(busman: &'static I2cBus, metrics: &'static SensorMetrics) -> anyhow::Result<Self> {
+    fn init(busman: &'static I2cBus, metrics: &'static SensorMetrics) -> anyhow::Result<Self> {
         // the adafruit breakout board has this I2C address.
         const ADDR: u8 = 0x58;
 
@@ -30,17 +34,23 @@ impl Sensor for Sgp30 {
         let i2c = busman.acquire_i2c();
         let mut sensor = sgp30::Sgp30::new(i2c, ADDR, Ets);
 
-        let version = sensor.get_feature_set().map_err(|error| anyhow!("failed to get {NAME} feature set: {error:?}"))?;
+        let version = sensor
+            .get_feature_set()
+            .map_err(|error| anyhow!("failed to get {NAME} feature set: {error:?}"))?;
         log::info!(target: NAME, "connected to {NAME}: version: {version:?}");
 
         // run the self-test
-        let selftest = sensor.selftest().map_err(|error| anyhow!("failed to run {NAME} self-test: {error:?}"))?;
+        let selftest = sensor
+            .selftest()
+            .map_err(|error| anyhow!("failed to run {NAME} self-test: {error:?}"))?;
         if !selftest {
             anyhow::bail!("{NAME} self-test failed");
         }
 
         // initialize the sensor.
-        sensor.init().map_err(|error| anyhow!("failed to initialize {NAME}: {error:?}"))?;
+        sensor
+            .init()
+            .map_err(|error| anyhow!("failed to initialize {NAME}: {error:?}"))?;
 
         Ok(Self {
             sensor,
@@ -50,12 +60,16 @@ impl Sensor for Sgp30 {
             polls: Wrapping(0),
             started_at: Instant::now(),
             init: true,
-
         })
     }
 
     fn poll(&mut self) -> anyhow::Result<()> {
-        let sgp30::Measurement { tvoc_ppb, co2eq_ppm } = self.sensor.measure()
+        let sgp30::Measurement {
+            tvoc_ppb,
+            co2eq_ppm,
+        } = self
+            .sensor
+            .measure()
             .map_err(|error| anyhow!("failed to read {NAME} measurement: {error:?}"))?;
         self.polls += 1;
 
@@ -87,10 +101,15 @@ impl Sensor for Sgp30 {
 
         let humidity = {
             let mut count = 0;
-            let sum: f32 = self.abs_humidity.metrics().iter().map(|(_, gauge)| {
-                count += 1;
-                gauge.value() as f32
-            }).sum();
+            let sum: f32 = self
+                .abs_humidity
+                .metrics()
+                .iter()
+                .map(|(_, gauge)| {
+                    count += 1;
+                    gauge.value() as f32
+                })
+                .sum();
             sum / count as f32
         };
 
@@ -101,8 +120,11 @@ impl Sensor for Sgp30 {
 
         match sgp30::Humidity::from_f32(humidity) {
             Ok(val) => {
-                self.sensor.set_humidity(Some(&val))
-                    .map_err(|error| anyhow!("failed to set {NAME} absolute humidity to {humidity:3.2} g/𝑚³: {error:?}"))?;
+                self.sensor.set_humidity(Some(&val)).map_err(|error| {
+                    anyhow!(
+                        "failed to set {NAME} absolute humidity to {humidity:3.2} g/𝑚³: {error:?}"
+                    )
+                })?;
                 log::debug!(target: NAME, "updated absolute humidity to {humidity:3.2} g/𝑚³");
             }
             Err(err) => {
