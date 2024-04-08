@@ -1,7 +1,7 @@
 // If using the `binstart` feature of `esp-idf-sys`, always keep this module
 // imported
 use anyhow::Context;
-use eclss::{actor, bme680::Bme680, http, net, pmsa003i::Pmsa003i, scd30::Scd30, sgp30::Sgp30, sensor, ws2812};
+use eclss::{actor, http, net, sensor, ws2812};
 use embassy_time::Duration;
 use esp_idf_hal::{
     i2c::{I2cConfig, I2cDriver},
@@ -21,6 +21,16 @@ static METRICS: eclss::SensorMetrics = eclss::SensorMetrics::new();
 // Make sure that the firmware will contain
 // up-to-date build time and package info coming from the binary crate
 esp_idf_sys::esp_app_desc!();
+
+#[cfg(not(any(
+    feature = "sensor-bme680",
+    feature = "sensor-pmsa003i",
+    feature = "sensor-sgp30",
+    feature = "sensor-scd30",
+)))]
+compile_error!(
+    "compiling without any of the 'sensor-*' features enabled is probably not very useful!"
+);
 
 fn main() -> anyhow::Result<()> {
     // It is necessary to call this function once. Otherwise, some patches to the
@@ -84,25 +94,31 @@ fn main() -> anyhow::Result<()> {
     exec.spawn_local_collect(wifi.run(sysloop.clone(), neopixel), &mut tasks)
         .context("failed to spawn wifi bg task")?;
 
-    exec.spawn_local_collect(sensor_mangler.run::<Scd30>(scd30_rx), &mut tasks)
+    #[cfg(feature = "sensor-scd30")]
+    exec.spawn_local_collect(sensor_mangler.run::<scd30::Scd30>(scd30_rx), &mut tasks)
         .context("failed to spawn SCD30 task")?;
 
+    #[cfg(feature = "sensor-pmsa003i")]
     let _pmsa003i_control = {
         let (tx, rx) = actor::channel(10);
-        exec.spawn_local_collect(sensor_mangler.run::<Pmsa003i>(rx), &mut tasks)
+        exec.spawn_local_collect(sensor_mangler.run::<pmsa003i::Pmsa003i>(rx), &mut tasks)
             .context("failed to spawn PMSA003I task")?;
         tx
     };
+
+    #[cfg(feature = "sensor-bme680")]
     let _bme680_control = {
         let (tx, rx) = actor::channel(10);
-        exec.spawn_local_collect(sensor_mangler.run::<Bme680>(rx), &mut tasks)
+        exec.spawn_local_collect(sensor_mangler.run::<bme680::Bme680>(rx), &mut tasks)
             .context("failed to spawn BME680 task")?;
         tx
     };
+
+    #[cfg(feature = "sensor-sgp30")]
     let _sgp30_control = {
         let (tx, rx) = actor::channel(10);
-        exec.spawn_local_collect(sensor_mangler.run::<Sgp30>(rx), &mut tasks)
-            .context("failed to spawn SCD30 task")?;
+        exec.spawn_local_collect(sensor_mangler.run::<sgp30::Sgp30>(rx), &mut tasks)
+            .context("failed to spawn SGP30 task")?;
         tx
     };
 
